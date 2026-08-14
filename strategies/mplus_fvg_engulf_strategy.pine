@@ -423,6 +423,17 @@ C_WIN  = color.new(#26a69a, 20)
 C_LOSS = color.new(#ef5350, 20)
 C_TXT  = color.white
 
+// Pine only allows function declarations at global scope, so these take the
+// table and the row's colours as arguments instead of closing over them.
+sumRow(t, r, k, v, bg, sz) =>
+    table.cell(t, 0, r, k, bgcolor = C_ROW, text_color = C_TXT, text_size = sz,
+         text_halign = text.align_left)
+    table.cell(t, 1, r, v, bgcolor = bg, text_color = C_TXT, text_size = sz,
+         text_halign = text.align_right)
+
+listCell(t, c, r, s, bg, sz) =>
+    table.cell(t, c, r, s, bgcolor = bg, text_color = C_TXT, text_size = sz)
+
 var table sumT  = na
 var table listT = na
 
@@ -459,9 +470,10 @@ if showDash and barstate.islast
                 nOpen += 1
 
     closed = nTp + nSl
-    winRt  = closed > 0 ? nTp / closed * 100 : 0.0
+    // Pine does integer division when both operands are int, so force float.
+    winRt  = closed > 0 ? 100.0 * nTp / closed : 0.0
     netR   = nTp * rr - nSl
-    perDay = closed / math.max(lookbackDay, 1)
+    perDay = closed / math.max(lookbackDay, 1.0)
 
     table.delete(sumT)
     sumT := table.new(posOf(dashPos), 2, 11, border_width = 1,
@@ -471,26 +483,20 @@ if showDash and barstate.islast
     table.cell(sumT, 1, 0, "last " + str.tostring(lookbackDay) + "d",
          bgcolor = C_HEAD, text_color = C_TXT, text_size = txtSize)
 
-    cellPair(r, k, v, bg) =>
-        table.cell(sumT, 0, r, k, bgcolor = C_ROW, text_color = C_TXT,
-             text_size = txtSize, text_halign = text.align_left)
-        table.cell(sumT, 1, r, v, bgcolor = bg, text_color = C_TXT,
-             text_size = txtSize, text_halign = text.align_right)
-
-    cellPair(1,  "Trades",        str.tostring(closed),                 C_ROW)
-    cellPair(2,  "Target",        str.tostring(nTp),                    C_WIN)
-    cellPair(3,  "Stop",          str.tostring(nSl),                    C_LOSS)
-    cellPair(4,  "Open",          str.tostring(nOpen),                  C_ROW)
-    cellPair(5,  "Win rate",      str.tostring(winRt, "#.#") + "%",
-         winRt >= 50 ? C_WIN : C_ROW)
-    cellPair(6,  "Best TP run",   str.tostring(maxWin),                 C_WIN)
-    cellPair(7,  "Worst SL run",  str.tostring(maxLos),                 C_LOSS)
-    cellPair(8,  "Current run",   (curRun > 0 ? "+" : "") + str.tostring(curRun),
-         curRun > 0 ? C_WIN : curRun < 0 ? C_LOSS : C_ROW)
-    cellPair(9,  "Net R",         (netR >= 0 ? "+" : "") + str.tostring(netR, "#.#") + "R",
-         netR >= 0 ? C_WIN : C_LOSS)
-    cellPair(10, "Trades / day",  str.tostring(perDay, "#.#") +
-         (nSkip > 0 ? "   (" + str.tostring(nSkip) + " filtered)" : ""), C_ROW)
+    sumRow(sumT, 1,  "Trades",       str.tostring(closed), C_ROW,  txtSize)
+    sumRow(sumT, 2,  "Target",       str.tostring(nTp),    C_WIN,  txtSize)
+    sumRow(sumT, 3,  "Stop",         str.tostring(nSl),    C_LOSS, txtSize)
+    sumRow(sumT, 4,  "Open",         str.tostring(nOpen),  C_ROW,  txtSize)
+    sumRow(sumT, 5,  "Win rate",     str.tostring(winRt, "#.#") + "%",
+         winRt >= 50 ? C_WIN : C_ROW, txtSize)
+    sumRow(sumT, 6,  "Best TP run",  str.tostring(maxWin), C_WIN,  txtSize)
+    sumRow(sumT, 7,  "Worst SL run", str.tostring(maxLos), C_LOSS, txtSize)
+    sumRow(sumT, 8,  "Current run",  (curRun > 0 ? "+" : "") + str.tostring(curRun),
+         curRun > 0 ? C_WIN : curRun < 0 ? C_LOSS : C_ROW, txtSize)
+    sumRow(sumT, 9,  "Net R",        (netR >= 0 ? "+" : "") + str.tostring(netR, "#.#") + "R",
+         netR >= 0 ? C_WIN : C_LOSS, txtSize)
+    sumRow(sumT, 10, "Trades / day", str.tostring(perDay, "#.#") +
+         (nSkip > 0 ? "   (" + str.tostring(nSkip) + " filtered)" : ""), C_ROW, txtSize)
 
     // --- the trade list -----------------------------------------------------
     table.delete(listT)
@@ -499,15 +505,13 @@ if showDash and barstate.islast
         listT := table.new(posOf(listPos), 7, shown + 1, border_width = 1,
              frame_color = C_HEAD, frame_width = 1)
 
-        head(c, s) =>
-            table.cell(listT, c, 0, s, bgcolor = C_HEAD, text_color = C_TXT, text_size = txtSize)
-        head(0, "#")
-        head(1, "Time")
-        head(2, "Dir")
-        head(3, "Entry")
-        head(4, "Stop")
-        head(5, "Target")
-        head(6, "R")
+        listCell(listT, 0, 0, "#",      C_HEAD, txtSize)
+        listCell(listT, 1, 0, "Time",   C_HEAD, txtSize)
+        listCell(listT, 2, 0, "Dir",    C_HEAD, txtSize)
+        listCell(listT, 3, 0, "Entry",  C_HEAD, txtSize)
+        listCell(listT, 4, 0, "Stop",   C_HEAD, txtSize)
+        listCell(listT, 5, 0, "Target", C_HEAD, txtSize)
+        listCell(listT, 6, 0, "R",      C_HEAD, txtSize)
 
         // newest first
         for r = 1 to shown
@@ -522,12 +526,10 @@ if showDash and barstate.islast
                 2 => "−1.0"
                 3 => "filtered"
                 => "open"
-            put(c, s) =>
-                table.cell(listT, c, r, s, bgcolor = bg, text_color = C_TXT, text_size = txtSize)
-            put(0, str.tostring(t.id))
-            put(1, str.format_time(t.entryTime, "MM-dd HH:mm", syminfo.timezone))
-            put(2, t.isLong ? "LONG" : "SHORT")
-            put(3, str.tostring(t.entry,  format.mintick))
-            put(4, str.tostring(t.stop,   format.mintick))
-            put(5, str.tostring(t.target, format.mintick))
-            put(6, rTxt)
+            listCell(listT, 0, r, str.tostring(t.id), bg, txtSize)
+            listCell(listT, 1, r, str.format_time(t.entryTime, "MM-dd HH:mm", syminfo.timezone), bg, txtSize)
+            listCell(listT, 2, r, t.isLong ? "LONG" : "SHORT", bg, txtSize)
+            listCell(listT, 3, r, str.tostring(t.entry,  format.mintick), bg, txtSize)
+            listCell(listT, 4, r, str.tostring(t.stop,   format.mintick), bg, txtSize)
+            listCell(listT, 5, r, str.tostring(t.target, format.mintick), bg, txtSize)
+            listCell(listT, 6, r, rTxt, bg, txtSize)
