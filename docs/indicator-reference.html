@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>M+ FVG Engulf — مرجع کامل اندیکاتور</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm 18mm 14mm; }
+
+  :root{
+    --ink:#1a2027; --muted:#5b6672; --line:#d8dee5; --soft:#f4f6f8;
+    --accent:#0d6d63; --warn:#a8580d; --bad:#b3261e; --good:#0d6d63;
+    --code:#eef2f5;
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    font-family:"Vazirmatn","Noto Naskh Arabic",Tahoma,sans-serif;
+    color:var(--ink); font-size:10.2pt; line-height:1.85; margin:0;
+  }
+
+  h1{ font-size:20pt; margin:0 0 2mm; letter-spacing:-.3px; }
+  h2{
+    font-size:13pt; margin:9mm 0 3mm; padding-bottom:1.6mm;
+    border-bottom:2px solid var(--accent); color:var(--accent);
+    page-break-after:avoid;
+  }
+  h3{ font-size:11pt; margin:5mm 0 2mm; color:var(--ink); page-break-after:avoid; }
+  p{ margin:0 0 2.6mm; text-align:justify; }
+
+  .lede{ color:var(--muted); font-size:10.5pt; margin-bottom:5mm; }
+
+  header.cover{
+    border:1px solid var(--line); border-top:4px solid var(--accent);
+    border-radius:3px; padding:7mm 6mm; margin-bottom:6mm; background:var(--soft);
+  }
+  .meta{ color:var(--muted); font-size:8.8pt; line-height:1.7; margin-top:3mm; }
+
+  table{ width:100%; border-collapse:collapse; margin:2.5mm 0 4mm; font-size:9.1pt; }
+  th,td{ border:1px solid var(--line); padding:1.7mm 2.2mm; vertical-align:top; }
+  th{ background:var(--soft); font-weight:600; text-align:right; }
+  tr{ page-break-inside:avoid; }
+  td.id{ font-family:ui-monospace,"DejaVu Sans Mono",monospace; direction:ltr;
+         text-align:center; white-space:nowrap; font-size:8.4pt; background:#fbfcfd; width:15mm; }
+  td.num,td.mono{ font-family:ui-monospace,"DejaVu Sans Mono",monospace;
+                  direction:ltr; text-align:left; font-size:8.6pt; }
+
+  code{ font-family:ui-monospace,"DejaVu Sans Mono",monospace; direction:ltr;
+        display:inline-block; background:var(--code); padding:.4mm 1.2mm;
+        border-radius:2px; font-size:8.8pt; }
+  pre{ font-family:ui-monospace,"DejaVu Sans Mono",monospace; direction:ltr;
+       text-align:left; background:var(--code); border:1px solid var(--line);
+       border-radius:3px; padding:2.5mm 3mm; font-size:8.5pt; line-height:1.6;
+       overflow-x:auto; margin:2mm 0 3.5mm; page-break-inside:avoid; }
+
+  blockquote{ margin:2mm 0 3mm; padding:2mm 3.5mm 2mm 3mm;
+              border-right:3px solid var(--accent); background:var(--soft);
+              color:var(--muted); font-size:9.3pt; }
+
+  .note,.warn{ border-radius:3px; padding:2.5mm 3.5mm; margin:3mm 0;
+               font-size:9.3pt; page-break-inside:avoid; }
+  .note{ background:#eef6f5; border:1px solid #b9d9d5; }
+  .warn{ background:#fdf3e9; border:1px solid #edcfae; }
+  .warn strong{ color:var(--warn); }
+
+  /* Pills carry both Latin ids and Persian words, so they must not force a
+     direction — that breaks Arabic shaping. Isolation keeps each one from
+     bleeding into the surrounding bidi run. */
+  .pill{ display:inline-block; font-size:8pt; padding:.3mm 1.8mm; border-radius:9px;
+         border:1px solid var(--line); background:#fff; color:var(--muted);
+         unicode-bidi:isolate; white-space:nowrap; }
+  .pill.mono{ font-family:ui-monospace,"DejaVu Sans Mono",monospace; }
+  .on { border-color:#b9d9d5; background:#eef6f5; color:var(--good); }
+  .off{ border-color:#e0c4c1; background:#fbeeed; color:var(--bad); }
+
+  ol,ul{ margin:0 0 3mm; padding-right:5mm; }
+  li{ margin-bottom:1.2mm; }
+  .steps li{ margin-bottom:2mm; }
+
+  footer{ margin-top:8mm; padding-top:3mm; border-top:1px solid var(--line);
+          color:var(--muted); font-size:8.4pt; }
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <h1>M+ FVG Engulf</h1>
+  <div class="lede">مرجع کامل اندیکاتور و استراتژی — هر چیزی که در کد پیاده شده است</div>
+  <div class="meta">
+    مخزن: <code>qaradagh/M_Plus</code> · شاخه: <code>claude/indicator-strategy-tester-hdg9oi</code><br>
+    فایل‌ها: <code>indicators/mplus_fvg_engulf.pine</code> · <code>strategies/mplus_fvg_engulf_strategy.pine</code><br>
+    منبع قوانین: فایل صوتی پیاده‌شده در <code>docs/transcript/</code> — نقل‌قول‌ها در <code>docs/SPEC.md</code>
+  </div>
+</header>
+
+<div class="note">
+<strong>چطور از این سند ایراد بگیرید:</strong> هر قانون یک شناسه دارد
+(<span class="pill mono">R-01</span>)، هر ورودی <span class="pill mono">I-01</span>،
+هر سؤال باز <span class="pill mono">Q-01</span> و هر محدودیت فنی <span class="pill mono">L-01</span>.
+کافی است بنویسید «R-09 اشتباه است، باید فلان باشد» تا دقیقاً همان بند اصلاح شود.
+</div>
+
+<h2>۱ · ستاپ در یک نگاه</h2>
+
+<p>
+یک FVG دست‌نخورده روی تایم ۱۵ دقیقه پیدا می‌شود. سپس روی تایم ۱ دقیقه منتظر می‌مانیم
+قیمت داخل آن برگردد. اولین کندلی که وارد ناحیه می‌شود «کندل مرجع» نام می‌گیرد. اگر
+حداکثر یک تا دو کندل داخل ناحیه کلوز کنند و بعد سریع یک کندل فراتر از سایه‌ی کندل مرجع
+کلوز کند (اینگالف)، همان‌جا با نسبت ۱:۳ وارد می‌شویم.
+</p>
+
+<p>ستاپ در سه حالت باطل می‌شود: قیمت کامل از ناحیه رد شود، سه کلوز داخلش بخورد، یا بیش از
+مهلت تعیین‌شده طول بکشد.</p>
+
+<h2>۲ · معماری تایم‌فریم</h2>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
+<tr><td class="id">R-01</td><td>FVG روی تایم‌فریم ورودی <code>htfTf</code> (پیش‌فرض ۱۵ دقیقه) تشخیص داده می‌شود، نه روی تایم چارت.</td></tr>
+<tr><td class="id">R-02</td><td>تمام منطق ورود، اینگالف و شمارش کندل روی <strong>تایم چارت</strong> اجرا می‌شود. یعنی چارت باید روی ۱ دقیقه باشد.</td></tr>
+<tr><td class="id">R-03</td><td>اگر تایم چارت بالاتر از تایم FVG باشد، یک برچسب هشدار نارنجی روی چارت ظاهر می‌شود. اسکریپت متوقف نمی‌شود، فقط اخطار می‌دهد.</td></tr>
+</table>
+
+<h2>۳ · تشخیص FVG</h2>
+
+<p>داده‌ی تایم بالا با <code>request.security</code> و <code>lookahead_off</code> خوانده می‌شود.
+همه‌ی اندیس‌ها یک کندل عقب‌ترند تا فقط از کندل <strong>بسته‌شده</strong> استفاده شود:</p>
+
+<pre>bullOk = low[1]  &gt; high[3]      // bullish FVG
+bearOk = high[1] &lt; low[3]       // bearish FVG
+
+bullish zone:   bot = high[3]   top = low[1]
+bearish zone:   bot = high[1]   top = low[3]</pre>
+
+<p><code>bot</code> کف ناحیه و <code>top</code> سقف آن است — صرف‌نظر از اینکه ناحیه صعودی
+باشد یا نزولی.</p>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
+<tr><td class="id">R-04</td><td>الگوی سه‌کندلی استاندارد: بین سایه‌ی کندل اول و سوم فاصله باشد. محاسبه با <strong>سایه</strong> است نه بدنه.</td></tr>
+<tr><td class="id">R-05</td><td>ناحیه در اولین کندلِ تایم پایینِ بعد از بسته شدن کندل سومِ تایم بالا ثبت می‌شود. یعنی حداکثر ۱ دقیقه تأخیر — در ازای آن هیچ repaint‌ای وجود ندارد.</td></tr>
+<tr><td class="id">R-06</td><td>اندازه‌ی FVG هیچ فیلتری ندارد. مطابق فایل صوتی: «سایزشون اصلا مهم نیست».</td></tr>
+<tr><td class="id">R-07</td><td>حداکثر <code>maxZones</code> ناحیه هم‌زمان رهگیری می‌شود (پیش‌فرض ۴۰). با پر شدن، قدیمی‌ترین حذف می‌شود.</td></tr>
+</table>
+
+<h2>۴ · چرخه‌ی عمر ناحیه</h2>
+
+<p>هر ناحیه دو وضعیت دارد: <strong>۰ = منتظر بازگشت قیمت</strong> و
+<strong>۱ = مسلح (قیمت وارد شده، منتظر اینگالف)</strong>.</p>
+
+<h3>۴٫۱ ورود قیمت به ناحیه</h3>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
+<tr><td class="id">R-08</td><td>ورود برای ناحیه‌ی صعودی: <code>low &lt; top</code> — برای نزولی: <code>high &gt; bot</code>. مقایسه اکیداً بزرگ‌تر/کوچک‌تر است، پس <strong>لمس دقیق لبه ورود حساب نمی‌شود</strong>. مطابق: «باید بیاد توش».</td></tr>
+<tr><td class="id">R-09</td><td>در همان کندلِ ورود، کندل مرجع تنظیم می‌شود: <code>refHi = high</code> و <code>refLo = low</code>.</td></tr>
+<tr><td class="id">R-10</td><td>اگر همان کندلِ ورود داخل ناحیه کلوز کرده باشد، شمارنده‌ی کلوز از ۱ شروع می‌شود، وگرنه از ۰.</td></tr>
+<tr><td class="id">R-11</td><td>هر ناحیه فقط <strong>یک بار</strong> فرصت دارد. بعد از سیگنال یا ابطال، از لیست حذف می‌شود و دیگر بررسی نمی‌گردد. این همان «دست نخورده باشه» است.</td></tr>
+</table>
+
+<h3>۴٫۲ ترتیب دقیق ارزیابی در هر کندل (ناحیه‌ی مسلح)</h3>
+
+<p>این ترتیب مهم است — اگر جایی از منطق ایراد دارد، احتمالاً همین‌جاست:</p>
+
+<ol class="steps">
+<li>به‌روزرسانی سقف و کف حرکت: <code>swHi = max(swHi, high)</code> و <code>swLo = min(swLo, low)</code></li>
+<li><strong>عبور کامل؟</strong> اگر کلوز آن‌طرف ناحیه باشد → ناحیه باطل، پایان.</li>
+<li><strong>اینگالف؟</strong> اگر کلوز فراتر از سایه‌ی کندل مرجع باشد → سیگنال صادر می‌شود، پایان.</li>
+<li><strong>کلوز عمیق‌تر؟</strong> اگر کلوز از آن‌سوی کندل مرجع رد شده باشد و هنوز سهمیه‌ی آپدیت مانده → کندل مرجع جابه‌جا می‌شود.</li>
+<li><strong>شمارش کلوز داخلی:</strong> اگر این کندل داخل ناحیه کلوز کرده، شمارنده یکی زیاد می‌شود؛ اگر از سقف گذشت → ناحیه باطل.</li>
+<li><strong>مهلت:</strong> اگر از کندلِ ورود بیش از <code>maxBarsToEngulf</code> کندل گذشته → ناحیه باطل.</li>
+</ol>
+
+<div class="warn">
+<strong>نکته‌ای که حتماً باید بررسی کنی:</strong> مراحل ۴ و ۵ در یک کندل هر دو اجرا می‌شوند.
+یعنی کندلی که مرجع را آپدیت می‌کند، هم‌زمان یک واحد به شمارنده‌ی کلوز داخلی هم اضافه می‌کند.
+اگر منظور دوستت این نبوده، این بند باید عوض شود.
+</div>
+
+<h3>۴٫۳ شرایط ابطال</h3>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
+<tr><td class="id">R-12</td><td>عبور کامل: برای ناحیه‌ی صعودی <code>close &lt; bot</code> و برای نزولی <code>close &gt; top</code>. معیار <strong>کلوز</strong> است نه سایه — یعنی سایه‌ای که از ناحیه رد شود ولی برگردد، ناحیه را نمی‌کُشد. با ورودی <code>killOnBreak</code> قابل خاموش کردن است.</td></tr>
+<tr><td class="id">R-13</td><td>سقف کلوز داخلی <code>maxClosesInside</code> (پیش‌فرض ۲). سومین کلوز باعث ابطال می‌شود. مطابق: «سه تا کلوز شد دیگه کنسله».</td></tr>
+<tr><td class="id">R-14</td><td>مهلت اینگالف از <strong>کندلِ ورود</strong> شمرده می‌شود، نه از کندل مرجعِ آپدیت‌شده. شرط ابطال: <code>bar_index − enteredBar ≥ maxBarsToEngulf</code>.</td></tr>
+</table>
+
+<h2>۵ · کندل مرجع و قانون آپدیت</h2>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
+<tr><td class="id">R-15</td><td>آپدیت فقط با <strong>کلوز</strong> رخ می‌دهد: برای ستاپ خرید <code>close &lt; refLo</code> و برای فروش <code>close &gt; refHi</code>.</td></tr>
+<tr><td class="id">R-16</td><td>سایه‌ای که فراتر از کندل مرجع برود ولی کلوز نکند، مرجع را <strong>عوض نمی‌کند</strong>. مطابق: «با کلوز نمیتونه بیاد با شدو میاد، اون اولین برده».</td></tr>
+<tr><td class="id">R-17</td><td>حداکثر <code>maxUpdates</code> بار آپدیت (پیش‌فرض ۱). مطابق: «فقط تا دوتا میتونه، یعنی یه دونه آپدیت بشه».</td></tr>
+<tr><td class="id">R-18</td><td>هنگام آپدیت، هم <code>refHi</code> و هم <code>refLo</code> با کندل جدید جایگزین می‌شوند.</td></tr>
+</table>
+
+<h2>۶ · اینگالف و ورود</h2>
+
+<pre>long  entry:   close &gt; refHi    // close above the reference candle's HIGH
+short entry:   close &lt; refLo    // close below the reference candle's LOW</pre>
+
+<p>یعنی کلوز باید فراتر از <strong>سایه</strong>ی کندل مرجع باشد، نه فقط فراتر از بدنه‌اش.</p>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
+<tr><td class="id">R-19</td><td>معیار اینگالف <strong>کلوز</strong> در برابر <strong>سایه</strong>ی کندل مرجع است — نه بدنه در برابر بدنه. مطابق: «بالای این باید با شدو، بادی بسته بشه».</td></tr>
+<tr><td class="id">R-20</td><td>هم‌رنگ بودن کندل‌ها بررسی نمی‌شود. مطابق: «هم رنگ و غیر همرنگ اینا مهم نیست».</td></tr>
+<tr><td class="id">R-21</td><td>تعداد کندل‌های اینگالف‌کننده محدود نیست؛ فقط مهلت کلی R-14 اعمال می‌شود.</td></tr>
+<tr><td class="id">R-22</td><td>قیمت ورود = <strong>کلوز کندل اینگالف‌کننده</strong>. در اندیکاتور همین عدد مبناست؛ در استراتژی سفارش در <strong>اوپن کندل بعدی</strong> پر می‌شود (رفتار واقع‌گرایانه‌ی TradingView).</td></tr>
+<tr><td class="id">R-23</td><td>سیگنال فقط روی کندل بسته‌شده صادر می‌شود (<code>barstate.isconfirmed</code>). هیچ سیگنالی وسط کندل ظاهر و ناپدید نمی‌شود.</td></tr>
+</table>
+
+<h2>۷ · حد ضرر و حد سود</h2>
+
+<p>سه حالت برای استاپ در دسترس است. پیش‌فرض <strong>Swing since gap entry</strong> است:</p>
+
+<table>
+<tr><th style="width:38mm">حالت</th><th>خرید</th><th>فروش</th></tr>
+<tr><td>Swing since gap entry <span class="pill on">پیش‌فرض</span></td><td class="mono">swLo</td><td class="mono">swHi</td></tr>
+<tr><td>Reference candle</td><td class="mono">refLo</td><td class="mono">refHi</td></tr>
+<tr><td>Far edge of gap</td><td class="mono">bot</td><td class="mono">top</td></tr>
+</table>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
+<tr><td class="id">R-24</td><td><code>swLo</code>/<code>swHi</code> یعنی کف/سقف تمام کندل‌ها از لحظه‌ی ورود به ناحیه تا خودِ کندل اینگالف‌کننده.</td></tr>
+<tr><td class="id">R-25</td><td>به استاپ می‌توان <code>stopBufTicks</code> تیک حاشیه اضافه کرد (پیش‌فرض ۰).</td></tr>
+<tr><td class="id">R-26</td><td>حد سود = <code>entry ± rr × risk</code> که در آن <code>risk = |entry − stop|</code>. پیش‌فرض <code>rr = 3.0</code>.</td></tr>
+<tr><td class="id">R-27</td><td>اگر ریسک از یک تیک کمتر باشد، سیگنال دور ریخته می‌شود (جلوگیری از تقسیم بر صفر و معامله‌ی بی‌معنی).</td></tr>
+</table>
+
+<div class="note">
+<strong>اعتبارسنجی با نمونه‌ی واقعی:</strong> در اسکرین‌شات XAUUSD که فرستادی —
+ورود <code>4319.93</code>، استاپ <code>4322.88</code>، تارگت <code>4310.94</code>.
+ریسک ۲٫۹۵ و ریوارد ۸٫۹۹ ⟵ نسبت ۳٫۰۵ به ۱. یعنی محاسبه‌ی R-26 درست کار می‌کند.
+</div>
+
+<h2>۸ · فیلترها</h2>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>فیلتر</th><th style="width:20mm">پیش‌فرض</th><th>توضیح</th></tr>
+<tr><td class="id">R-28</td><td>جهت معامله</td><td><span class="pill on">هر دو روشن</span></td><td>خرید و فروش جداگانه قابل خاموش کردن.</td></tr>
+<tr><td class="id">R-29</td><td>EMA</td><td><span class="pill off">خاموش</span></td><td>اگر روشن شود: خرید فقط بالای EMA، فروش فقط زیر آن. خط EMA مستقل از فیلتر رسم می‌شود.</td></tr>
+<tr><td class="id">R-30</td><td>سشن</td><td><span class="pill off">خاموش</span></td><td>بازه‌ی پیش‌فرض <code>0000-2359</code> یعنی کل شبانه‌روز.</td></tr>
+<tr><td class="id">R-31</td><td>تک‌پوزیشن <span class="pill">فقط استراتژی</span></td><td><span class="pill on">روشن</span></td><td>تا وقتی معامله‌ای باز است، سیگنال جدید گرفته نمی‌شود.</td></tr>
+<tr><td class="id">R-32</td><td colspan="3">اگر ستاپ کامل شود ولی فیلتری جلویش را بگیرد، ناحیه <strong>باز هم مصرف می‌شود</strong> و به عنوان «filtered» ثبت می‌گردد — نه اینکه نادیده گرفته شود.</td></tr>
+</table>
+
+<h2>۹ · رهگیری معامله و امتیازدهی</h2>
+
+<p>هر سیگنال یک رکورد معامله می‌سازد با یکی از چهار وضعیت:
+<strong>باز</strong>، <strong>تارگت</strong>، <strong>استاپ</strong>، <strong>فیلترشده</strong>.</p>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
+<tr><td class="id">R-33</td><td>بررسی نتیجه از کندل <strong>بعد از</strong> کندل ورود شروع می‌شود. برخورد در همان کندل سیگنال شمرده نمی‌شود.</td></tr>
+<tr><td class="id">R-34</td><td>اگر یک کندل هم استاپ و هم تارگت را در بر بگیرد، <strong>استاپ ثبت می‌شود</strong>. از داده‌ی کندلی نمی‌توان فهمید کدام زودتر لمس شده؛ فرض محافظه‌کارانه گرفته شده است.</td></tr>
+<tr><td class="id">R-35</td><td>امتیاز هر معامله: تارگت <code>+rr</code> و استاپ <code>−1</code>. چون استاپ و تارگت ثابت‌اند، این مقدار دقیق است نه تخمینی.</td></tr>
+<tr><td class="id">R-36</td><td>معامله‌های قدیمی‌تر از پنجره‌ی داشبورد به‌کلی حذف می‌شوند (هم از آمار، هم از روی چارت).</td></tr>
+</table>
+
+<div class="warn">
+<strong>اختلاف عمدی بین داشبورد و Strategy Tester:</strong> داشبورد فرض می‌کند ورود دقیقاً
+روی کلوز کندل اینگالف انجام شده، ولی Strategy Tester در اوپن کندل بعدی پر می‌کند. پس
+اعداد این دو <strong>کمی متفاوت خواهند بود</strong> و این ایراد نیست. مرجع نهایی برای
+سودآوری، Strategy Tester است؛ داشبورد برای دیدِ سریع کیفیت ستاپ است.
+</div>
+
+<h2>۱۰ · نمایش بصری</h2>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>عنصر</th><th>توضیح</th></tr>
+<tr><td class="id">R-37</td><td>باکس ناحیه</td><td>سبزآبی = FVG صعودی، قرمز = نزولی، نارنجی = مسلح‌شده (قیمت واردش شده)، خاکستری = باطل‌شده.</td></tr>
+<tr><td class="id">R-38</td><td>باکس ریسک</td><td>مستطیل قرمز از قیمت ورود تا استاپ.</td></tr>
+<tr><td class="id">R-39</td><td>باکس ریوارد</td><td>مستطیل سبز از قیمت ورود تا تارگت. نسبت ارتفاع این دو باکس همان ۱:۳ است.</td></tr>
+<tr><td class="id">R-40</td><td>رشد باکس</td><td>تا وقتی معامله باز است باکس‌ها به راست کشیده می‌شوند و لحظه‌ی برخورد به استاپ یا تارگت متوقف می‌گردند.</td></tr>
+<tr><td class="id">R-41</td><td>برچسب</td><td>چهار حالت: <code>● open</code> · <code>✓ TP +3R</code> · <code>✗ SL −1R</code> · <code>⊘ filtered</code>. شماره‌ی معامله ابتدای برچسب می‌آید.</td></tr>
+<tr><td class="id">R-42</td><td>فلش سیگنال</td><td>مثلث سبز زیر کندل برای خرید، مثلث قرمز بالای کندل برای فروش.</td></tr>
+</table>
+
+<h2>۱۱ · داشبورد</h2>
+
+<h3>۱۱٫۱ جدول خلاصه</h3>
+
+<table>
+<tr><th style="width:32mm">سطر</th><th>محاسبه</th></tr>
+<tr><td>Trades</td><td>تعداد معاملات بسته‌شده (تارگت + استاپ). معامله‌ی باز و فیلترشده در این عدد نیست.</td></tr>
+<tr><td>Target / Stop</td><td>تعداد تارگت‌خورده و استاپ‌خورده.</td></tr>
+<tr><td>Open</td><td>معاملاتی که هنوز نتیجه نگرفته‌اند.</td></tr>
+<tr><td>Win rate</td><td class="mono">Target / (Target + Stop) × 100</td></tr>
+<tr><td>Best TP run</td><td>بلندترین زنجیره‌ی تارگت پشت سر هم در پنجره.</td></tr>
+<tr><td>Worst SL run</td><td>بلندترین زنجیره‌ی استاپ پشت سر هم در پنجره.</td></tr>
+<tr><td>Current run</td><td>زنجیره‌ی جاری. مثبت یعنی تارگت پیاپی، منفی یعنی استاپ پیاپی.</td></tr>
+<tr><td>Net R</td><td class="mono">Target × rr − Stop</td></tr>
+<tr><td>Trades / day</td><td class="mono">Trades / lookbackDays</td></tr>
+</table>
+
+<p>اگر ستاپی فیلتر شده باشد، تعدادش داخل پرانتز کنار <code>Trades / day</code> می‌آید.</p>
+
+<h3>۱۱٫۲ جدول معاملات</h3>
+
+<p>ستون‌ها: شماره · زمان · جهت · ورود · استاپ · تارگت · نتیجه به R.
+مرتب‌سازی از <strong>جدیدترین به قدیمی‌ترین</strong>. رنگ سطر: سبز = تارگت،
+قرمز = استاپ، خاکستری = فیلترشده.</p>
+
+<table>
+<tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
+<tr><td class="id">R-43</td><td>پنجره‌ی آماری <code>lookbackDay</code> روز است (پیش‌فرض ۵ — مطابق بک‌تست دستی فایل صوتی). تمام آمار فقط داخل همین پنجره است، نه از ابتدای چارت.</td></tr>
+<tr><td class="id">R-44</td><td>زمان‌ها با تایم‌زون نماد نمایش داده می‌شوند، نه تایم‌زون محلی.</td></tr>
+</table>
+
+<h2>۱۲ · فهرست کامل ورودی‌ها</h2>
+
+<table>
+<tr><th style="width:14mm">شناسه</th><th>ورودی</th><th style="width:24mm">پیش‌فرض</th><th>کار</th></tr>
+<tr><td class="id">I-01</td><td class="mono">FVG timeframe</td><td class="mono">15</td><td>تایم تشکیل FVG</td></tr>
+<tr><td class="id">I-02</td><td class="mono">Max closes inside</td><td class="mono">2</td><td>سقف کلوز داخل ناحیه</td></tr>
+<tr><td class="id">I-03</td><td class="mono">Max bars to engulf</td><td class="mono">4</td><td>مهلت اینگالف</td></tr>
+<tr><td class="id">I-04</td><td class="mono">Max ref updates</td><td class="mono">1</td><td>سقف آپدیت کندل مرجع</td></tr>
+<tr><td class="id">I-05</td><td class="mono">Cancel on close through</td><td class="mono">on</td><td>ابطال با عبور کامل</td></tr>
+<tr><td class="id">I-06</td><td class="mono">Longs / Shorts</td><td class="mono">on / on</td><td>جهت‌های مجاز</td></tr>
+<tr><td class="id">I-07</td><td class="mono">Max tracked gaps</td><td class="mono">40</td><td>سقف ناحیه‌ی هم‌زمان</td></tr>
+<tr><td class="id">I-08</td><td class="mono">Reward : Risk</td><td class="mono">3.0</td><td>نسبت حد سود</td></tr>
+<tr><td class="id">I-09</td><td class="mono">Stop loss placement</td><td class="mono">Swing</td><td>مبنای استاپ</td></tr>
+<tr><td class="id">I-10</td><td class="mono">Stop buffer (ticks)</td><td class="mono">0</td><td>حاشیه‌ی استاپ</td></tr>
+<tr><td class="id">I-11</td><td class="mono">Plot EMA</td><td class="mono">on</td><td>رسم خط EMA</td></tr>
+<tr><td class="id">I-12</td><td class="mono">EMA length</td><td class="mono">200</td><td>دوره‌ی EMA</td></tr>
+<tr><td class="id">I-13</td><td class="mono">Use EMA as filter</td><td class="mono">off</td><td>فیلتر روند</td></tr>
+<tr><td class="id">I-14</td><td class="mono">Session filter</td><td class="mono">off</td><td>محدودیت ساعت</td></tr>
+<tr><td class="id">I-15</td><td class="mono">Draw gap boxes</td><td class="mono">on</td><td>رسم ناحیه‌ها</td></tr>
+<tr><td class="id">I-16</td><td class="mono">Keep cancelled gaps</td><td class="mono">on</td><td>خاکستری کردن به جای پاک کردن</td></tr>
+<tr><td class="id">I-17</td><td class="mono">Draw trade boxes</td><td class="mono">on</td><td>باکس ریسک و ریوارد</td></tr>
+<tr><td class="id">I-18</td><td class="mono">Label trades</td><td class="mono">on</td><td>برچسب وضعیت</td></tr>
+<tr><td class="id">I-19</td><td class="mono">Mark filtered setups</td><td class="mono">on</td><td>ثبت ستاپ فیلترشده</td></tr>
+<tr><td class="id">I-20</td><td class="mono">Show dashboard</td><td class="mono">on</td><td>جدول‌های آمار</td></tr>
+<tr><td class="id">I-21</td><td class="mono">Lookback (days)</td><td class="mono">5</td><td>پنجره‌ی آماری</td></tr>
+<tr><td class="id">I-22</td><td class="mono">Trades listed</td><td class="mono">12</td><td>تعداد سطر جدول</td></tr>
+<tr><td class="id">I-23</td><td class="mono">Positions / Text size</td><td class="mono">—</td><td>محل و اندازه‌ی جدول‌ها</td></tr>
+<tr><td class="id">I-24</td><td class="mono">Skip while trade open</td><td class="mono">on</td><td>تک‌پوزیشن <span class="pill">فقط استراتژی</span></td></tr>
+<tr><td class="id">I-25</td><td class="mono">Size by risk %</td><td class="mono">on</td><td>حجم بر مبنای ریسک <span class="pill">فقط استراتژی</span></td></tr>
+<tr><td class="id">I-26</td><td class="mono">Risk per trade %</td><td class="mono">1.0</td><td>درصد ریسک هر معامله <span class="pill">فقط استراتژی</span></td></tr>
+<tr><td class="id">I-27</td><td class="mono">Partial exit</td><td class="mono">off</td><td>خروج پله‌ای <span class="pill">فقط استراتژی</span></td></tr>
+<tr><td class="id">I-28</td><td class="mono">Partial at R / size %</td><td class="mono">2.0 / 50</td><td>سطح و حجم خروج پله‌ای <span class="pill">فقط استراتژی</span></td></tr>
+</table>
+
+<h2>۱۳ · فرض‌ها و سؤالات باز</h2>
+
+<p>این‌ها در فایل صوتی قطعی نشده‌اند. همه پارامتر دارند و قابل تغییرند:</p>
+
+<table>
+<tr><th style="width:14mm">شناسه</th><th>موضوع</th><th>فرض فعلی</th><th>چرا مبهم است</th></tr>
+<tr><td class="id">Q-01</td><td>جای استاپ</td><td>سقف/کف حرکت از ورود به ناحیه</td><td>در متن فقط «استاپ اینجا» با اشاره به چارت. نمونه‌ی XAUUSD با این فرض ۱:۳ داد.</td></tr>
+<tr><td class="id">Q-02</td><td>مبدأ شمارش مهلت</td><td>از کندل ورود به ناحیه</td><td>«سه چهار تا کندل» گفته شده ولی مبدأ مشخص نیست. گزینه‌ی دیگر: از کندل مرجعِ آپدیت‌شده.</td></tr>
+<tr><td class="id">Q-03</td><td>معنی «رد کردن» ناحیه</td><td>کلوز آن‌طرف ناحیه</td><td>ممکن است منظور سایه بوده باشد، که ستاپ‌های بیشتری را می‌کُشد.</td></tr>
+<tr><td class="id">Q-04</td><td>خروج پله‌ای روی ۲R</td><td>خاموش</td><td>خودش گفت «نمیدونم ریسک فری کنیم یا ۵۰ درصد خروج».</td></tr>
+<tr><td class="id">Q-05</td><td>فیلتر سشن</td><td>خاموش</td><td>فقط اشاره‌ی گذرا به توکیو. در اسکرین‌شات‌ها سایه‌ی سشن دیده می‌شود.</td></tr>
+<tr><td class="id">Q-06</td><td>معامله‌ی هم‌زمان</td><td>فقط یک پوزیشن</td><td>«همزمان به دوتاش بخوره» پرسیده شد ولی جواب داده نشد.</td></tr>
+<tr><td class="id">Q-07</td><td>آپدیت + شمارش کلوز</td><td>هر دو در یک کندل اعمال می‌شوند</td><td>در متن به این هم‌پوشانی اشاره نشده. ← بند ۴٫۲</td></tr>
+<tr><td class="id">Q-08</td><td>دوره‌ی EMA</td><td>۲۰۰</td><td>عدد واقعی از فایل صوتی یا اسکرین‌شات‌ها مشخص نشد.</td></tr>
+</table>
+
+<h2>۱۴ · آنچه عمداً پیاده نشده</h2>
+
+<ul>
+<li>هیچ فیلتری روی اندازه‌ی FVG — چون صریحاً گفته شده مهم نیست (R-06).</li>
+<li>هیچ فیلتری روی رنگ کندل اینگالف (R-20).</li>
+<li>هیچ تشخیص ساختار بازار، خط روند یا سطح حمایت/مقاومتی.</li>
+<li>تریلینگ استاپ — در فایل صوتی مطرح نشد.</li>
+<li>خط‌چین‌های مورب داخل باکس‌ها که در اسکرین‌شات‌های دوستت دیده می‌شود — کاربردشان معلوم نیست.</li>
+</ul>
+
+<h2>۱۵ · محدودیت‌های فنی</h2>
+
+<table>
+<tr><th style="width:14mm">شناسه</th><th>محدودیت</th></tr>
+<tr><td class="id">L-01</td><td>TradingView سقف ۵۰۰ باکس و ۵۰۰ برچسب دارد. به همین دلیل معاملات خارج از پنجره‌ی <code>lookbackDay</code> پاک می‌شوند. اگر پنجره را خیلی بزرگ کنی، قدیمی‌ترین ترسیم‌ها خودبه‌خود حذف می‌شوند.</td></tr>
+<tr><td class="id">L-02</td><td>ثبت FVG یک کندلِ تایم پایین تأخیر دارد (R-05). این هزینه‌ی حذف repaint است.</td></tr>
+<tr><td class="id">L-03</td><td>داده‌ی تاریخی ۱ دقیقه در TradingView به تعداد کندل محدود است؛ بک‌تست چندماهه روی ۱ دقیقه ممکن نیست.</td></tr>
+<tr><td class="id">L-04</td><td>نتیجه‌ی معامله از داده‌ی کندلی استنتاج می‌شود، نه تیک به تیک. R-34 مستقیماً از همین محدودیت می‌آید.</td></tr>
+<tr><td class="id">L-05</td><td>موتور ستاپ در دو فایل اندیکاتور و استراتژی تکرار شده است. اگر یکی را تغییر دادی، حتماً دیگری را هم هماهنگ کن وگرنه سیگنال‌ها از هم جدا می‌شوند.</td></tr>
+</table>
+
+<footer>
+تولیدشده از مخزن <code>qaradagh/M_Plus</code> · منبع این سند: <code>docs/indicator-reference.html</code><br>
+برای گزارش ایراد کافی است شناسه‌ی بند را ذکر کنید.
+</footer>
+
+</body>
+</html>

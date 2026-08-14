@@ -6,6 +6,10 @@
 //  returns into one on the entry timeframe (1m) and the candle that entered the
 //  gap gets engulfed by a later close.
 //
+//  Each signal is drawn as a risk box (entry → stop) and a reward box
+//  (entry → target), labelled with its live state and outcome, and rolled up
+//  into a dashboard of recent trades and their statistics.
+//
 //  Rules are documented, with source quotes, in docs/SPEC.md.
 //  Chart must be on the ENTRY timeframe (1m); the gap timeframe is an input.
 //
@@ -21,6 +25,7 @@ G_RULE = "2 · Setup rules"
 G_RISK = "3 · Targets"
 G_FILT = "4 · Filters"
 G_VIS  = "5 · Visuals"
+G_DASH = "6 · Dashboard"
 
 htfTf = input.timeframe("15", "FVG timeframe", group = G_TF,
      tooltip = "تایم‌فریمی که FVG روی آن تشکیل می‌شود (طبق فایل صوتی: ۱۵ دقیقه). چارت را روی تایم ورود (۱ دقیقه) بگذارید.")
@@ -39,7 +44,7 @@ maxZones   = input.int(40, "Max tracked gaps", minval = 5, maxval = 200, group =
 rr       = input.float(3.0, "Reward : Risk", minval = 0.5, step = 0.5, group = G_RISK)
 stopMode = input.string("Swing since gap entry", "Stop loss placement",
      options = ["Swing since gap entry", "Reference candle", "Far edge of gap"], group = G_RISK,
-     tooltip = "در فایل صوتی جای دقیق استاپ فقط با اشاره به چارت گفته شده. رجوع کن به سؤال باز #۱ در docs/SPEC.md")
+     tooltip = "پیش‌فرض با نمونه‌ی بک‌تست XAUUSD خوانده شد: ورود ۴۳۱۹٫۹۳ / استاپ ۴۳۲۲٫۸۸ / تارگت ۴۳۱۰٫۹۴ ≈ ۱:۳")
 stopBufTicks = input.int(0, "Stop buffer (ticks)", minval = 0, group = G_RISK)
 
 showEma = input.bool(true, "Plot EMA", group = G_FILT, inline = "ema",
@@ -50,14 +55,28 @@ useEma  = input.bool(false, "Use EMA as a trend filter", group = G_FILT,
 useSess = input.bool(false, "Session filter", group = G_FILT, inline = "sess")
 sessStr = input.session("0000-2359", "", group = G_FILT, inline = "sess")
 
-showZones   = input.bool(true,  "Draw gap boxes", group = G_VIS)
-showDead    = input.bool(true,  "Keep cancelled gaps on chart", group = G_VIS,
+showZones  = input.bool(true, "Draw gap boxes", group = G_VIS)
+showDead   = input.bool(true, "Keep cancelled gaps on chart", group = G_VIS,
      tooltip = "روشن باشد تا نقشه‌ی ناحیه‌ها شبیه اسکرین‌شات‌های بک‌تست بماند: ناحیه‌ی باطل‌شده خاکستری می‌شود به جای اینکه پاک شود.")
-showLevels  = input.bool(true,  "Draw entry / SL / TP levels", group = G_VIS)
-levelLen    = input.int(30, "Level length (bars)", minval = 5, group = G_VIS)
-colBull     = input.color(color.new(#26a69a, 82), "Bullish gap", group = G_VIS)
-colBear     = input.color(color.new(#ef5350, 82), "Bearish gap", group = G_VIS)
-colArmed    = input.color(color.new(#ffb300, 70), "Armed gap",   group = G_VIS)
+showBoxes  = input.bool(true, "Draw trade boxes", group = G_VIS)
+showLbls   = input.bool(true, "Label trades", group = G_VIS)
+showSkips  = input.bool(true, "Mark filtered-out setups", group = G_VIS,
+     tooltip = "ستاپی که شرایطش کامل شد ولی فیلتر (سشن/EMA/جهت) اجازه‌ی ورود نداد.")
+colBull    = input.color(color.new(#26a69a, 82), "Bullish gap", group = G_VIS)
+colBear    = input.color(color.new(#ef5350, 82), "Bearish gap", group = G_VIS)
+colArmed   = input.color(color.new(#ffb300, 70), "Armed gap",   group = G_VIS)
+colRisk    = input.color(color.new(#ef5350, 80), "Risk box",    group = G_VIS)
+colReward  = input.color(color.new(#26a69a, 82), "Reward box",  group = G_VIS)
+
+showDash    = input.bool(true, "Show dashboard", group = G_DASH)
+lookbackDay = input.int(5, "Lookback (days)", minval = 1, maxval = 60, group = G_DASH,
+     tooltip = "پنجره‌ی آماری داشبورد. بک‌تست دستی فایل صوتی روی ۵ روز بود.")
+listRows    = input.int(12, "Trades listed", minval = 0, maxval = 40, group = G_DASH)
+dashPos     = input.string("Top right", "Summary position",
+     options = ["Top right", "Top left", "Middle right", "Bottom left"], group = G_DASH)
+listPos     = input.string("Bottom right", "Trade list position",
+     options = ["Bottom right", "Bottom left", "Top left", "Middle left"], group = G_DASH)
+dashSize    = input.string("Small", "Text size", options = ["Tiny", "Small", "Normal"], group = G_DASH)
 
 // ------------------------------------------------------------------ types ---
 // One tracked fair value gap and the state machine around it.
@@ -77,6 +96,22 @@ type Fvg
     float swLo
     box   bx
 
+// One signal and what became of it.
+//   state 0 = running, 1 = target hit, 2 = stopped out, 3 = filtered out
+type Trade
+    int   id
+    bool  isLong
+    int   entryBar
+    int   entryTime
+    float entry
+    float stop
+    float target
+    int   state
+    int   exitBar
+    box   riskBx
+    box   rewardBx
+    label lbl
+
 // ------------------------------------------------- higher timeframe gaps ----
 // Everything is read one HTF bar back so the values come from a *closed* bar.
 // That costs at most one entry-timeframe bar of latency and removes any repaint.
@@ -91,17 +126,20 @@ htfGaps() =>
 htfClosed = not na(htfTime) and not na(htfTime[1]) and htfTime != htfTime[1]
 
 // ---------------------------------------------------------------- filters ---
-ema      = ta.ema(close, emaLen)
-inSess   = not useSess or not na(time(timeframe.period, sessStr))
-longOk   = allowLong  and inSess and (not useEma or close > ema)
-shortOk  = allowShort and inSess and (not useEma or close < ema)
+ema     = ta.ema(close, emaLen)
+inSess  = not useSess or not na(time(timeframe.period, sessStr))
+longOk  = allowLong  and inSess and (not useEma or close > ema)
+shortOk = allowShort and inSess and (not useEma or close < ema)
 
 // ------------------------------------------------------------------ state ---
-var zones = array.new<Fvg>()
+var zones  = array.new<Fvg>()
+var trades = array.new<Trade>()
+var int tradeSeq = 0
 
-// Per-bar signal outputs, consumed by the plotting section below.
+// Per-bar signal outputs, consumed by the trade tracker below.
 bool  sigLong  = false
 bool  sigShort = false
+bool  sigSkip  = false
 float sigEntry = na
 float sigStop  = na
 float sigTp    = na
@@ -142,7 +180,6 @@ if barstate.isconfirmed
             bool dead = false
             bool fire = false
 
-            // A close beyond the far side means the gap was traded through.
             brokeThrough = z.bull ? close < z.bot : close > z.top
             insideClose  = close <= z.top and close >= z.bot
 
@@ -202,11 +239,13 @@ if barstate.isconfirmed
                 risk    = math.abs(entryPx - stopPx)
                 dirOk   = z.bull ? longOk : shortOk
 
-                if risk > syminfo.mintick and dirOk
+                if risk > syminfo.mintick
                     sigEntry := entryPx
                     sigStop  := stopPx
                     sigTp    := z.bull ? entryPx + rr * risk : entryPx - rr * risk
-                    if z.bull
+                    if not dirOk
+                        sigSkip := true
+                    else if z.bull
                         sigLong := true
                     else
                         sigShort := true
@@ -226,6 +265,79 @@ if barstate.isconfirmed
                 if z.state == 1
                     box.set_bgcolor(z.bx, colArmed)
 
+    // --- open a trade record for this bar's signal ---------------------------
+    if sigLong or sigShort or (sigSkip and showSkips)
+        tradeSeq += 1
+        isL = sigLong or (sigSkip and sigTp > sigEntry)
+        t = Trade.new(id = tradeSeq, isLong = isL, entryBar = bar_index,
+             entryTime = time, entry = sigEntry, stop = sigStop, target = sigTp,
+             state = sigSkip ? 3 : 0, exitBar = bar_index,
+             riskBx = na, rewardBx = na, lbl = na)
+
+        if showBoxes and not sigSkip
+            t.riskBx := box.new(bar_index, math.max(t.entry, t.stop), bar_index + 1,
+                 math.min(t.entry, t.stop), border_color = color.new(#ef5350, 55),
+                 bgcolor = colRisk)
+            t.rewardBx := box.new(bar_index, math.max(t.entry, t.target), bar_index + 1,
+                 math.min(t.entry, t.target), border_color = color.new(#26a69a, 55),
+                 bgcolor = colReward)
+
+        array.push(trades, t)
+
+    // --- resolve open trades and maintain their drawings --------------------
+    if array.size(trades) > 0
+        for i = array.size(trades) - 1 to 0
+            t = array.get(trades, i)
+
+            // Retire everything older than the dashboard window so the 500
+            // drawing budget stays inside the range we actually report on.
+            if t.entryTime < last_bar_time - lookbackDay * 86400000
+                if not na(t.riskBx)
+                    box.delete(t.riskBx)
+                if not na(t.rewardBx)
+                    box.delete(t.rewardBx)
+                if not na(t.lbl)
+                    label.delete(t.lbl)
+                array.remove(trades, i)
+                continue
+
+            if t.state == 0 and bar_index > t.entryBar
+                hitStop = t.isLong ? low  <= t.stop   : high >= t.stop
+                hitTp   = t.isLong ? high >= t.target : low  <= t.target
+                // A bar that spans both levels is scored as a loss: the
+                // sequence inside the bar is unknowable from bar data.
+                if hitStop
+                    t.state   := 2
+                    t.exitBar := bar_index
+                else if hitTp
+                    t.state   := 1
+                    t.exitBar := bar_index
+
+            rightEdge = t.state == 0 ? bar_index + 1 : t.exitBar
+            if not na(t.riskBx)
+                box.set_right(t.riskBx, rightEdge)
+            if not na(t.rewardBx)
+                box.set_right(t.rewardBx, rightEdge)
+
+            if showLbls
+                txt = switch t.state
+                    1 => "#" + str.tostring(t.id) + "  ✓ TP  +" + str.tostring(rr, "#.#") + "R"
+                    2 => "#" + str.tostring(t.id) + "  ✗ SL  −1R"
+                    3 => "#" + str.tostring(t.id) + "  ⊘ filtered"
+                    => "#" + str.tostring(t.id) + "  ● open"
+                col = switch t.state
+                    1 => color.new(#26a69a, 10)
+                    2 => color.new(#ef5350, 10)
+                    3 => color.new(color.gray, 35)
+                    => color.new(color.gray, 20)
+                if na(t.lbl)
+                    t.lbl := label.new(t.entryBar, t.entry, txt,
+                         style = t.isLong ? label.style_label_up : label.style_label_down,
+                         color = col, textcolor = color.white, size = size.tiny)
+                else
+                    label.set_text(t.lbl, txt)
+                    label.set_color(t.lbl, col)
+
 // ------------------------------------------------------------------ plots ---
 plotshape(sigLong,  title = "Long",  style = shape.triangleup,
      location = location.belowbar, color = color.new(color.teal, 0), size = size.small)
@@ -233,14 +345,6 @@ plotshape(sigShort, title = "Short", style = shape.triangledown,
      location = location.abovebar, color = color.new(color.red, 0),  size = size.small)
 
 plot(showEma ? ema : na, "EMA", color = color.new(#2196f3, 20))
-
-if showLevels and (sigLong or sigShort)
-    line.new(bar_index, sigStop,  bar_index + levelLen, sigStop,
-         color = color.new(color.red, 20),  width = 1)
-    line.new(bar_index, sigTp,    bar_index + levelLen, sigTp,
-         color = color.new(color.teal, 20), width = 1)
-    line.new(bar_index, sigEntry, bar_index + levelLen, sigEntry,
-         color = color.new(color.gray, 40), width = 1, style = line.style_dotted)
 
 // Guard rail: this only works when the chart is on the entry timeframe.
 var label tfWarn = na
@@ -251,6 +355,134 @@ if barstate.islast
              "⚠ Chart timeframe is above the FVG timeframe (" + htfTf + ").\nSwitch the chart to the entry timeframe (1m).",
              style = label.style_label_down, color = color.new(color.orange, 10),
              textcolor = color.black, size = size.small)
+
+// -------------------------------------------------------------- dashboard ---
+posOf(s) =>
+    switch s
+        "Top left"      => position.top_left
+        "Top right"     => position.top_right
+        "Middle left"   => position.middle_left
+        "Middle right"  => position.middle_right
+        "Bottom left"   => position.bottom_left
+        => position.bottom_right
+
+txtSize = dashSize == "Tiny" ? size.tiny : dashSize == "Normal" ? size.normal : size.small
+
+C_HEAD = color.new(#37474f, 15)
+C_ROW  = color.new(#263238, 55)
+C_WIN  = color.new(#26a69a, 20)
+C_LOSS = color.new(#ef5350, 20)
+C_TXT  = color.white
+
+var table sumT  = na
+var table listT = na
+
+if showDash and barstate.islast
+    // --- roll the trade array up into statistics ----------------------------
+    int nTp    = 0
+    int nSl    = 0
+    int nOpen  = 0
+    int nSkip  = 0
+    int maxWin = 0
+    int maxLos = 0
+    int runWin = 0
+    int runLos = 0
+    int curRun = 0
+
+    if array.size(trades) > 0
+        for i = 0 to array.size(trades) - 1
+            t = array.get(trades, i)
+            if t.state == 1
+                nTp    += 1
+                runWin += 1
+                runLos := 0
+                curRun := runWin
+                maxWin := math.max(maxWin, runWin)
+            else if t.state == 2
+                nSl    += 1
+                runLos += 1
+                runWin := 0
+                curRun := -runLos
+                maxLos := math.max(maxLos, runLos)
+            else if t.state == 3
+                nSkip += 1
+            else
+                nOpen += 1
+
+    closed = nTp + nSl
+    winRt  = closed > 0 ? nTp / closed * 100 : 0.0
+    netR   = nTp * rr - nSl
+    pf     = nSl > 0 ? nTp * rr / nSl : na
+    perDay = closed / math.max(lookbackDay, 1)
+
+    table.delete(sumT)
+    sumT := table.new(posOf(dashPos), 2, 11, border_width = 1,
+         frame_color = C_HEAD, frame_width = 1)
+
+    table.cell(sumT, 0, 0, "M+ FVG", bgcolor = C_HEAD, text_color = C_TXT, text_size = txtSize)
+    table.cell(sumT, 1, 0, "last " + str.tostring(lookbackDay) + "d",
+         bgcolor = C_HEAD, text_color = C_TXT, text_size = txtSize)
+
+    cellPair(r, k, v, bg) =>
+        table.cell(sumT, 0, r, k, bgcolor = C_ROW, text_color = C_TXT,
+             text_size = txtSize, text_halign = text.align_left)
+        table.cell(sumT, 1, r, v, bgcolor = bg, text_color = C_TXT,
+             text_size = txtSize, text_halign = text.align_right)
+
+    cellPair(1,  "Trades",        str.tostring(closed),                 C_ROW)
+    cellPair(2,  "Target",        str.tostring(nTp),                    C_WIN)
+    cellPair(3,  "Stop",          str.tostring(nSl),                    C_LOSS)
+    cellPair(4,  "Open",          str.tostring(nOpen),                  C_ROW)
+    cellPair(5,  "Win rate",      str.tostring(winRt, "#.#") + "%",
+         winRt >= 50 ? C_WIN : C_ROW)
+    cellPair(6,  "Best TP run",   str.tostring(maxWin),                 C_WIN)
+    cellPair(7,  "Worst SL run",  str.tostring(maxLos),                 C_LOSS)
+    cellPair(8,  "Current run",   (curRun > 0 ? "+" : "") + str.tostring(curRun),
+         curRun > 0 ? C_WIN : curRun < 0 ? C_LOSS : C_ROW)
+    cellPair(9,  "Net R",         (netR >= 0 ? "+" : "") + str.tostring(netR, "#.#") + "R",
+         netR >= 0 ? C_WIN : C_LOSS)
+    cellPair(10, "Trades / day",  str.tostring(perDay, "#.#") +
+         (nSkip > 0 ? "   (" + str.tostring(nSkip) + " filtered)" : ""), C_ROW)
+
+    // --- the trade list -----------------------------------------------------
+    table.delete(listT)
+    if listRows > 0 and array.size(trades) > 0
+        shown = math.min(listRows, array.size(trades))
+        listT := table.new(posOf(listPos), 7, shown + 1, border_width = 1,
+             frame_color = C_HEAD, frame_width = 1)
+
+        head(c, s) =>
+            table.cell(listT, c, 0, s, bgcolor = C_HEAD, text_color = C_TXT, text_size = txtSize)
+        head(0, "#")
+        head(1, "Time")
+        head(2, "Dir")
+        head(3, "Entry")
+        head(4, "Stop")
+        head(5, "Target")
+        head(6, "R")
+
+        // newest first
+        for r = 1 to shown
+            t = array.get(trades, array.size(trades) - r)
+            bg = switch t.state
+                1 => C_WIN
+                2 => C_LOSS
+                3 => color.new(color.gray, 70)
+                => C_ROW
+            rTxt = switch t.state
+                1 => "+" + str.tostring(rr, "#.#")
+                2 => "−1.0"
+                3 => "filtered"
+                => "open"
+            put(c, s) =>
+                table.cell(listT, c, r, s, bgcolor = bg, text_color = C_TXT, text_size = txtSize)
+            put(0, str.tostring(t.id))
+            put(1, str.format_time(t.entryTime, "MM-dd HH:mm", syminfo.timezone))
+            put(2, t.isLong ? "LONG" : "SHORT")
+            put(3, str.tostring(t.entry,  format.mintick))
+            put(4, str.tostring(t.stop,   format.mintick))
+            put(5, str.tostring(t.target, format.mintick))
+            put(6, rTxt)
 
 // ----------------------------------------------------------------- alerts ---
 alertcondition(sigLong,  "M+ FVG Long",  "M+ FVG long entry on {{ticker}} @ {{close}}")

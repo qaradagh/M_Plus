@@ -23,6 +23,9 @@
 |---|---|
 | [`indicators/mplus_fvg_engulf.pine`](indicators/mplus_fvg_engulf.pine) | اندیکاتور — رسم ناحیه‌ها، فلش سیگنال، خطوط ورود/استاپ/تارگت، آلرت |
 | [`strategies/mplus_fvg_engulf_strategy.pine`](strategies/mplus_fvg_engulf_strategy.pine) | استراتژی — همان منطق + سفارش‌گذاری برای Strategy Tester |
+| [`docs/M_Plus-Indicator-Reference.pdf`](docs/M_Plus-Indicator-Reference.pdf) | **مرجع کامل ۹ صفحه‌ای** — هر قانون شماره‌دار برای گزارش ایراد |
+| [`docs/indicator-reference.html`](docs/indicator-reference.html) | متن منبع همان PDF |
+| [`docs/build-pdf.py`](docs/build-pdf.py) | ساخت مجدد PDF از روی HTML |
 | [`docs/SPEC.md`](docs/SPEC.md) | قوانین استخراج‌شده + سؤالات باز |
 | [`docs/transcript/`](docs/transcript/) | متن پیاده‌شده‌ی فایل صوتی |
 | [`docs/screenshots/`](docs/screenshots/) | اسکرین‌شات‌های ویدیو |
@@ -82,8 +85,25 @@
 - [x] استخراج و مستندسازی قوانین
 - [x] پیاده‌سازی اندیکاتور
 - [x] پیاده‌سازی استراتژی
-- [ ] تأیید سیگنال‌ها روی چارت واقعی و تنظیم سؤالات باز
-- [ ] اسکرین‌شات‌های ویدیو برای قطعی کردن جای استاپ
+- [x] اجرای بدون خطا روی TradingView (XAUUSD · ۱ دقیقه)
+- [x] باکس ریسک/ریوارد، برچسب وضعیت، داشبورد آمار
+- [x] مرجع کامل PDF برای بازبینی
+- [ ] بازخورد روی بندهای PDF و اصلاح قوانین
+- [ ] تعیین تکلیف سؤالات باز `Q-01` تا `Q-08`
+
+### بازبینی
+
+مرجع PDF را بخوان و هر بندی که با منظور دوستت نمی‌خواند را با شناسه‌اش گزارش کن —
+مثلاً «R-14 اشتباه است، مهلت باید از کندل مرجع شمرده شود». بندهای
+<code>R-**</code> قوانین، <code>I-**</code> ورودی‌ها، <code>Q-**</code> سؤالات باز و
+<code>L-**</code> محدودیت‌های فنی هستند.
+
+#### ساخت مجدد PDF
+
+```bash
+pip install playwright
+python3 docs/build-pdf.py --font-dir /path/to/vazirmatn/ttf
+```
 
 > ⚠️ خود فایل‌های صوتی/ویدیویی در `.gitignore` هستند و نباید commit شوند —
 > گیت‌هاب سقف ۱۰۰ مگابایت برای هر فایل دارد.
