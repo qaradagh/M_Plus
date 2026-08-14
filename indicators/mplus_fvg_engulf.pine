@@ -42,14 +42,17 @@ stopMode = input.string("Swing since gap entry", "Stop loss placement",
      tooltip = "در فایل صوتی جای دقیق استاپ فقط با اشاره به چارت گفته شده. رجوع کن به سؤال باز #۱ در docs/SPEC.md")
 stopBufTicks = input.int(0, "Stop buffer (ticks)", minval = 0, group = G_RISK)
 
-useEma  = input.bool(false, "EMA trend filter", group = G_FILT, inline = "ema",
-     tooltip = "در فایل صوتی مطرح شد ولی فعلاً کنار گذاشته شد: «میتونی خاموشش کنی بعدا».")
+showEma = input.bool(true, "Plot EMA", group = G_FILT, inline = "ema",
+     tooltip = "در همه‌ی اسکرین‌شات‌های بک‌تست یک EMA روی چارت هست، پس به عنوان مرجع بصری رسم می‌شود حتی وقتی فیلتر خاموش است.")
 emaLen  = input.int(200, "", minval = 1, group = G_FILT, inline = "ema")
+useEma  = input.bool(false, "Use EMA as a trend filter", group = G_FILT,
+     tooltip = "در فایل صوتی مطرح شد ولی فعلاً کنار گذاشته شد: «میتونی خاموشش کنی بعدا».")
 useSess = input.bool(false, "Session filter", group = G_FILT, inline = "sess")
 sessStr = input.session("0000-2359", "", group = G_FILT, inline = "sess")
 
 showZones   = input.bool(true,  "Draw gap boxes", group = G_VIS)
-showDead    = input.bool(false, "Keep cancelled gaps on chart", group = G_VIS)
+showDead    = input.bool(true,  "Keep cancelled gaps on chart", group = G_VIS,
+     tooltip = "روشن باشد تا نقشه‌ی ناحیه‌ها شبیه اسکرین‌شات‌های بک‌تست بماند: ناحیه‌ی باطل‌شده خاکستری می‌شود به جای اینکه پاک شود.")
 showLevels  = input.bool(true,  "Draw entry / SL / TP levels", group = G_VIS)
 levelLen    = input.int(30, "Level length (bars)", minval = 5, group = G_VIS)
 colBull     = input.color(color.new(#26a69a, 82), "Bullish gap", group = G_VIS)
@@ -229,7 +232,7 @@ plotshape(sigLong,  title = "Long",  style = shape.triangleup,
 plotshape(sigShort, title = "Short", style = shape.triangledown,
      location = location.abovebar, color = color.new(color.red, 0),  size = size.small)
 
-plot(useEma ? ema : na, "EMA", color = color.new(color.orange, 30))
+plot(showEma ? ema : na, "EMA", color = color.new(#2196f3, 20))
 
 if showLevels and (sigLong or sigShort)
     line.new(bar_index, sigStop,  bar_index + levelLen, sigStop,

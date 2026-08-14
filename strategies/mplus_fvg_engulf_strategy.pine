@@ -61,14 +61,17 @@ usePartial   = input.bool(false, "Partial exit + move to break-even", group = G_
 partialAtR   = input.float(2.0, "Partial at R", minval = 0.5, step = 0.5, group = G_RISK)
 partialPct   = input.int(50, "Partial size %", minval = 1, maxval = 99, group = G_RISK)
 
-useEma  = input.bool(false, "EMA trend filter", group = G_FILT, inline = "ema",
-     tooltip = "در فایل صوتی مطرح شد ولی فعلاً کنار گذاشته شد: «میتونی خاموشش کنی بعدا».")
+showEma = input.bool(true, "Plot EMA", group = G_FILT, inline = "ema",
+     tooltip = "در همه‌ی اسکرین‌شات‌های بک‌تست یک EMA روی چارت هست، پس به عنوان مرجع بصری رسم می‌شود حتی وقتی فیلتر خاموش است.")
 emaLen  = input.int(200, "", minval = 1, group = G_FILT, inline = "ema")
+useEma  = input.bool(false, "Use EMA as a trend filter", group = G_FILT,
+     tooltip = "در فایل صوتی مطرح شد ولی فعلاً کنار گذاشته شد: «میتونی خاموشش کنی بعدا».")
 useSess = input.bool(false, "Session filter", group = G_FILT, inline = "sess")
 sessStr = input.session("0000-2359", "", group = G_FILT, inline = "sess")
 
 showZones  = input.bool(true, "Draw gap boxes", group = G_VIS)
-showDead   = input.bool(false, "Keep cancelled gaps on chart", group = G_VIS)
+showDead   = input.bool(true,  "Keep cancelled gaps on chart", group = G_VIS,
+     tooltip = "روشن باشد تا نقشه‌ی ناحیه‌ها شبیه اسکرین‌شات‌های بک‌تست بماند: ناحیه‌ی باطل‌شده خاکستری می‌شود به جای اینکه پاک شود.")
 showStats  = input.bool(true, "Show summary table", group = G_VIS)
 colBull    = input.color(color.new(#26a69a, 82), "Bullish gap", group = G_VIS)
 colBear    = input.color(color.new(#ef5350, 82), "Bearish gap", group = G_VIS)
@@ -280,7 +283,7 @@ plotshape(sigLong,  title = "Long",  style = shape.triangleup,
 plotshape(sigShort, title = "Short", style = shape.triangledown,
      location = location.abovebar, color = color.new(color.red, 0),  size = size.small)
 
-plot(useEma ? ema : na, "EMA", color = color.new(color.orange, 30))
+plot(showEma ? ema : na, "EMA", color = color.new(#2196f3, 20))
 
 inTrade = strategy.position_size != 0
 plot(inTrade ? tStop : na, "Stop",  color = color.new(color.red, 20),  style = plot.style_linebr)
