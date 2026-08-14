@@ -112,6 +112,22 @@ type Trade
     box   rewardBx
     label lbl
 
+// Label text and colour for a trade in each of its four states. Declared here
+// so the signal handler and the resolver render a trade identically.
+tradeText(t) =>
+    switch t.state
+        1 => "#" + str.tostring(t.id) + "  ✓ TP  +" + str.tostring(rr, "#.#") + "R"
+        2 => "#" + str.tostring(t.id) + "  ✗ SL  −1R"
+        3 => "#" + str.tostring(t.id) + "  ⊘ filtered"
+        => "#" + str.tostring(t.id) + "  ● open"
+
+tradeColor(t) =>
+    switch t.state
+        1 => color.new(#26a69a, 10)
+        2 => color.new(#ef5350, 10)
+        3 => color.new(color.gray, 35)
+        => color.new(color.gray, 20)
+
 // ------------------------------------------------- higher timeframe gaps ----
 // Everything is read one HTF bar back so the values come from a *closed* bar.
 // That costs at most one entry-timeframe bar of latency and removes any repaint.
@@ -282,7 +298,25 @@ if barstate.isconfirmed
                  math.min(t.entry, t.target), border_color = color.new(#26a69a, 55),
                  bgcolor = colReward)
 
+        if showLbls
+            t.lbl := label.new(bar_index, t.entry, tradeText(t),
+                 style = isL ? label.style_label_up : label.style_label_down,
+                 color = tradeColor(t), textcolor = color.white, size = size.tiny)
+
         array.push(trades, t)
+
+        // Two boxes and a label per trade against TradingView's 500-drawing
+        // budget. Cap the tracked set so drawings are not culled behind our
+        // back, which would leave the dashboard describing trades that are no
+        // longer on the chart.
+        while array.size(trades) > 150
+            gone = array.shift(trades)
+            if not na(gone.riskBx)
+                box.delete(gone.riskBx)
+            if not na(gone.rewardBx)
+                box.delete(gone.rewardBx)
+            if not na(gone.lbl)
+                label.delete(gone.lbl)
 
     // --- resolve open trades and maintain their drawings --------------------
     if array.size(trades) > 0
@@ -299,44 +333,36 @@ if barstate.isconfirmed
                 if not na(t.lbl)
                     label.delete(t.lbl)
                 array.remove(trades, i)
-                continue
 
-            if t.state == 0 and bar_index > t.entryBar
-                hitStop = t.isLong ? low  <= t.stop   : high >= t.stop
-                hitTp   = t.isLong ? high >= t.target : low  <= t.target
-                // A bar that spans both levels is scored as a loss: the
-                // sequence inside the bar is unknowable from bar data.
-                if hitStop
-                    t.state   := 2
-                    t.exitBar := bar_index
-                else if hitTp
-                    t.state   := 1
-                    t.exitBar := bar_index
+            else if t.state == 0
+                // Only a running trade has its drawings touched. Re-setting a
+                // finished trade's right edge on every later bar eventually
+                // throws at runtime: a bar_index coordinate has to stay near
+                // the current bar, and a resolved trade's edge does not move.
+                bool resolved = false
 
-            rightEdge = t.state == 0 ? bar_index + 1 : t.exitBar
-            if not na(t.riskBx)
-                box.set_right(t.riskBx, rightEdge)
-            if not na(t.rewardBx)
-                box.set_right(t.rewardBx, rightEdge)
+                if bar_index > t.entryBar
+                    hitStop = t.isLong ? low  <= t.stop   : high >= t.stop
+                    hitTp   = t.isLong ? high >= t.target : low  <= t.target
+                    // A bar spanning both levels is scored as a loss: the order
+                    // of touches inside a bar is unknowable from bar data.
+                    if hitStop
+                        t.state   := 2
+                        t.exitBar := bar_index
+                        resolved  := true
+                    else if hitTp
+                        t.state   := 1
+                        t.exitBar := bar_index
+                        resolved  := true
 
-            if showLbls
-                txt = switch t.state
-                    1 => "#" + str.tostring(t.id) + "  ✓ TP  +" + str.tostring(rr, "#.#") + "R"
-                    2 => "#" + str.tostring(t.id) + "  ✗ SL  −1R"
-                    3 => "#" + str.tostring(t.id) + "  ⊘ filtered"
-                    => "#" + str.tostring(t.id) + "  ● open"
-                col = switch t.state
-                    1 => color.new(#26a69a, 10)
-                    2 => color.new(#ef5350, 10)
-                    3 => color.new(color.gray, 35)
-                    => color.new(color.gray, 20)
-                if na(t.lbl)
-                    t.lbl := label.new(t.entryBar, t.entry, txt,
-                         style = t.isLong ? label.style_label_up : label.style_label_down,
-                         color = col, textcolor = color.white, size = size.tiny)
-                else
-                    label.set_text(t.lbl, txt)
-                    label.set_color(t.lbl, col)
+                edge = resolved ? t.exitBar : bar_index + 1
+                if not na(t.riskBx)
+                    box.set_right(t.riskBx, edge)
+                if not na(t.rewardBx)
+                    box.set_right(t.rewardBx, edge)
+                if resolved and not na(t.lbl)
+                    label.set_text(t.lbl, tradeText(t))
+                    label.set_color(t.lbl, tradeColor(t))
 
 // ------------------------------------------------------------------ plots ---
 plotshape(sigLong,  title = "Long",  style = shape.triangleup,
