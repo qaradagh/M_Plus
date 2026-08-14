@@ -146,15 +146,23 @@ tradeColor(t) =>
 // ------------------------------------------------- higher timeframe gaps ----
 // Everything is read one HTF bar back so the values come from a *closed* bar.
 // That costs at most one entry-timeframe bar of latency and removes any repaint.
+// The pattern sits on HTF bars [3], [2] and [1]; time[3] is where it opens.
+// A gap is a feature of those three bars, so its box has to be drawn back over
+// them rather than at the chart bar that happens to notice it.
 htfGaps() =>
     bullOk = low[1] > high[3]
     bearOk = high[1] < low[3]
-    [bullOk, high[3], low[1], bearOk, high[1], low[3], time[1]]
+    [bullOk, high[3], low[1], bearOk, high[1], low[3], time[1], time[3]]
 
-[bullNew, bullBot, bullTop, bearNew, bearBot, bearTop, htfTime] =
+[bullNew, bullBot, bullTop, bearNew, bearBot, bearTop, htfTime, gapStart] =
      request.security(syminfo.tickerid, htfTf, htfGaps(), lookahead = barmerge.lookahead_off)
 
 htfClosed = not na(htfTime) and not na(htfTime[1]) and htfTime != htfTime[1]
+
+// Zone boxes are placed by timestamp, not bar index: the anchor is up to a full
+// HTF pattern behind the current bar, and bar_index coordinates may not reach
+// far from it. One chart bar of width, in milliseconds.
+barMs = timeframe.in_seconds() * 1000
 
 // ---------------------------------------------------------------- filters ---
 ema     = ta.ema(close, emaLen)
@@ -184,7 +192,8 @@ if barstate.isconfirmed
                  enteredBar = 0, closesIn = 0, updates = 0,
                  refHi = na, refLo = na, swHi = na, swLo = na, bx = na)
             if showZones
-                z.bx := box.new(bar_index, z.top, bar_index + 1, z.bot,
+                z.bx := box.new(gapStart, z.top, time + barMs, z.bot,
+                     xloc = xloc.bar_time,
                      border_color = color.new(color.teal, 40), bgcolor = colBull)
             array.push(zones, z)
 
@@ -193,7 +202,8 @@ if barstate.isconfirmed
                  enteredBar = 0, closesIn = 0, updates = 0,
                  refHi = na, refLo = na, swHi = na, swLo = na, bx = na)
             if showZones
-                z.bx := box.new(bar_index, z.top, bar_index + 1, z.bot,
+                z.bx := box.new(gapStart, z.top, time + barMs, z.bot,
+                     xloc = xloc.bar_time,
                      border_color = color.new(color.red, 40), bgcolor = colBear)
             array.push(zones, z)
 
@@ -292,7 +302,7 @@ if barstate.isconfirmed
                         box.delete(z.bx)
                 array.remove(zones, i)
             else if not na(z.bx)
-                box.set_right(z.bx, bar_index + 1)
+                box.set_right(z.bx, time + barMs)
                 if z.state == 1
                     box.set_bgcolor(z.bx, colArmed)
 
