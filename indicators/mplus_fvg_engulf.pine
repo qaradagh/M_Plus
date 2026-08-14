@@ -1,0 +1,261 @@
+//@version=6
+// =============================================================================
+//  M+ FVG Engulf  —  Indicator
+// -----------------------------------------------------------------------------
+//  Marks unmitigated HTF (15m) fair value gaps and fires a signal when price
+//  returns into one on the entry timeframe (1m) and the candle that entered the
+//  gap gets engulfed by a later close.
+//
+//  Rules are documented, with source quotes, in docs/SPEC.md.
+//  Chart must be on the ENTRY timeframe (1m); the gap timeframe is an input.
+//
+//  Signals are evaluated on confirmed bars only, so nothing repaints.
+// =============================================================================
+
+indicator("M+ FVG Engulf", shorttitle = "M+ FVG", overlay = true,
+     max_boxes_count = 500, max_labels_count = 500, max_lines_count = 500)
+
+// ----------------------------------------------------------------- inputs ---
+G_TF   = "1 · Timeframes"
+G_RULE = "2 · Setup rules"
+G_RISK = "3 · Targets"
+G_FILT = "4 · Filters"
+G_VIS  = "5 · Visuals"
+
+htfTf = input.timeframe("15", "FVG timeframe", group = G_TF,
+     tooltip = "تایم‌فریمی که FVG روی آن تشکیل می‌شود (طبق فایل صوتی: ۱۵ دقیقه). چارت را روی تایم ورود (۱ دقیقه) بگذارید.")
+
+maxClosesInside = input.int(2, "Max closes inside the gap", minval = 1, maxval = 5, group = G_RULE,
+     tooltip = "حداکثر تعداد کندلی که مجاز است داخل FVG کلوز کند. سه کلوز = ستاپ باطل.")
+maxBarsToEngulf = input.int(4, "Max bars to engulf", minval = 1, maxval = 30, group = G_RULE,
+     tooltip = "اگر تا این تعداد کندل بعد از ورود قیمت به FVG اینگالف رخ ندهد، ستاپ باطل می‌شود («سه چهار تا کندل شد دیگه کنسل»).")
+maxUpdates = input.int(1, "Max reference-candle updates", minval = 0, maxval = 3, group = G_RULE,
+     tooltip = "کندل مرجع حداکثر چند بار می‌تواند آپدیت شود. طبق فایل صوتی فقط یک بار.")
+killOnBreak = input.bool(true, "Cancel when a close passes through the gap", group = G_RULE)
+allowLong  = input.bool(true, "Longs",  group = G_RULE, inline = "dir")
+allowShort = input.bool(true, "Shorts", group = G_RULE, inline = "dir")
+maxZones   = input.int(40, "Max tracked gaps", minval = 5, maxval = 200, group = G_RULE)
+
+rr       = input.float(3.0, "Reward : Risk", minval = 0.5, step = 0.5, group = G_RISK)
+stopMode = input.string("Swing since gap entry", "Stop loss placement",
+     options = ["Swing since gap entry", "Reference candle", "Far edge of gap"], group = G_RISK,
+     tooltip = "در فایل صوتی جای دقیق استاپ فقط با اشاره به چارت گفته شده. رجوع کن به سؤال باز #۱ در docs/SPEC.md")
+stopBufTicks = input.int(0, "Stop buffer (ticks)", minval = 0, group = G_RISK)
+
+useEma  = input.bool(false, "EMA trend filter", group = G_FILT, inline = "ema",
+     tooltip = "در فایل صوتی مطرح شد ولی فعلاً کنار گذاشته شد: «میتونی خاموشش کنی بعدا».")
+emaLen  = input.int(200, "", minval = 1, group = G_FILT, inline = "ema")
+useSess = input.bool(false, "Session filter", group = G_FILT, inline = "sess")
+sessStr = input.session("0000-2359", "", group = G_FILT, inline = "sess")
+
+showZones   = input.bool(true,  "Draw gap boxes", group = G_VIS)
+showDead    = input.bool(false, "Keep cancelled gaps on chart", group = G_VIS)
+showLevels  = input.bool(true,  "Draw entry / SL / TP levels", group = G_VIS)
+levelLen    = input.int(30, "Level length (bars)", minval = 5, group = G_VIS)
+colBull     = input.color(color.new(#26a69a, 82), "Bullish gap", group = G_VIS)
+colBear     = input.color(color.new(#ef5350, 82), "Bearish gap", group = G_VIS)
+colArmed    = input.color(color.new(#ffb300, 70), "Armed gap",   group = G_VIS)
+
+// ------------------------------------------------------------------ types ---
+// One tracked fair value gap and the state machine around it.
+//   state 0 = formed, waiting for price to come back into it
+//   state 1 = price entered, reference candle set, waiting for the engulf
+type Fvg
+    float top
+    float bot
+    bool  bull
+    int   state
+    int   enteredBar
+    int   closesIn
+    int   updates
+    float refHi
+    float refLo
+    float swHi
+    float swLo
+    box   bx
+
+// ------------------------------------------------- higher timeframe gaps ----
+// Everything is read one HTF bar back so the values come from a *closed* bar.
+// That costs at most one entry-timeframe bar of latency and removes any repaint.
+htfGaps() =>
+    bullOk = low[1] > high[3]
+    bearOk = high[1] < low[3]
+    [bullOk, high[3], low[1], bearOk, high[1], low[3], time[1]]
+
+[bullNew, bullBot, bullTop, bearNew, bearBot, bearTop, htfTime] =
+     request.security(syminfo.tickerid, htfTf, htfGaps(), lookahead = barmerge.lookahead_off)
+
+htfClosed = not na(htfTime) and not na(htfTime[1]) and htfTime != htfTime[1]
+
+// ---------------------------------------------------------------- filters ---
+ema      = ta.ema(close, emaLen)
+inSess   = not useSess or not na(time(timeframe.period, sessStr))
+longOk   = allowLong  and inSess and (not useEma or close > ema)
+shortOk  = allowShort and inSess and (not useEma or close < ema)
+
+// ------------------------------------------------------------------ state ---
+var zones = array.new<Fvg>()
+
+// Per-bar signal outputs, consumed by the plotting section below.
+bool  sigLong  = false
+bool  sigShort = false
+float sigEntry = na
+float sigStop  = na
+float sigTp    = na
+
+if barstate.isconfirmed
+
+    // --- register gaps confirmed by the last closed HTF bar ------------------
+    if htfClosed
+        if bullNew and bullTop > bullBot
+            z = Fvg.new(top = bullTop, bot = bullBot, bull = true, state = 0,
+                 enteredBar = 0, closesIn = 0, updates = 0,
+                 refHi = na, refLo = na, swHi = na, swLo = na, bx = na)
+            if showZones
+                z.bx := box.new(bar_index, z.top, bar_index + 1, z.bot,
+                     border_color = color.new(color.teal, 40), bgcolor = colBull)
+            array.push(zones, z)
+
+        if bearNew and bearTop > bearBot
+            z = Fvg.new(top = bearTop, bot = bearBot, bull = false, state = 0,
+                 enteredBar = 0, closesIn = 0, updates = 0,
+                 refHi = na, refLo = na, swHi = na, swLo = na, bx = na)
+            if showZones
+                z.bx := box.new(bar_index, z.top, bar_index + 1, z.bot,
+                     border_color = color.new(color.red, 40), bgcolor = colBear)
+            array.push(zones, z)
+
+        // Drop the oldest gaps once we are tracking more than we care about.
+        while array.size(zones) > maxZones
+            old = array.shift(zones)
+            if not na(old.bx)
+                box.delete(old.bx)
+
+    // --- advance the state machine ------------------------------------------
+    if array.size(zones) > 0
+        for i = array.size(zones) - 1 to 0
+            z = array.get(zones, i)
+
+            bool dead = false
+            bool fire = false
+
+            // A close beyond the far side means the gap was traded through.
+            brokeThrough = z.bull ? close < z.bot : close > z.top
+            insideClose  = close <= z.top and close >= z.bot
+
+            if z.state == 0
+                // Waiting for price to come back. A touch of the near edge is
+                // not enough — price has to trade inside the gap.
+                entered = z.bull ? low < z.top : high > z.bot
+                if entered
+                    z.state      := 1
+                    z.enteredBar := bar_index
+                    z.refHi      := high
+                    z.refLo      := low
+                    z.swHi       := high
+                    z.swLo       := low
+                    z.closesIn   := insideClose ? 1 : 0
+                    if killOnBreak and brokeThrough
+                        dead := true
+            else
+                z.swHi := math.max(z.swHi, high)
+                z.swLo := math.min(z.swLo, low)
+
+                if killOnBreak and brokeThrough
+                    dead := true
+
+                if not dead
+                    // Engulf = a close beyond the reference candle's wick.
+                    engulfed = z.bull ? close > z.refHi : close < z.refLo
+                    if engulfed
+                        fire := true
+                    else
+                        // A close deeper into the gap moves the reference
+                        // candle forward — but only once. A wick alone does
+                        // not update it.
+                        deeper = z.bull ? close < z.refLo : close > z.refHi
+                        if deeper and z.updates < maxUpdates
+                            z.updates += 1
+                            z.refHi   := high
+                            z.refLo   := low
+
+                        if insideClose
+                            z.closesIn += 1
+                            if z.closesIn > maxClosesInside
+                                dead := true
+
+                        if bar_index - z.enteredBar >= maxBarsToEngulf
+                            dead := true
+
+            // --- act on the outcome ---------------------------------------
+            if fire
+                entryPx = close
+                stopRaw = switch stopMode
+                    "Reference candle"  => z.bull ? z.refLo : z.refHi
+                    "Far edge of gap"   => z.bull ? z.bot   : z.top
+                    => z.bull ? z.swLo : z.swHi
+                buf     = stopBufTicks * syminfo.mintick
+                stopPx  = z.bull ? stopRaw - buf : stopRaw + buf
+                risk    = math.abs(entryPx - stopPx)
+                dirOk   = z.bull ? longOk : shortOk
+
+                if risk > syminfo.mintick and dirOk
+                    sigEntry := entryPx
+                    sigStop  := stopPx
+                    sigTp    := z.bull ? entryPx + rr * risk : entryPx - rr * risk
+                    if z.bull
+                        sigLong := true
+                    else
+                        sigShort := true
+
+                dead := true
+
+            if dead
+                if not na(z.bx)
+                    if showDead
+                        box.set_bgcolor(z.bx, color.new(color.gray, 90))
+                        box.set_border_color(z.bx, color.new(color.gray, 60))
+                    else
+                        box.delete(z.bx)
+                array.remove(zones, i)
+            else if not na(z.bx)
+                box.set_right(z.bx, bar_index + 1)
+                if z.state == 1
+                    box.set_bgcolor(z.bx, colArmed)
+
+// ------------------------------------------------------------------ plots ---
+plotshape(sigLong,  title = "Long",  style = shape.triangleup,
+     location = location.belowbar, color = color.new(color.teal, 0), size = size.small)
+plotshape(sigShort, title = "Short", style = shape.triangledown,
+     location = location.abovebar, color = color.new(color.red, 0),  size = size.small)
+
+plot(useEma ? ema : na, "EMA", color = color.new(color.orange, 30))
+
+if showLevels and (sigLong or sigShort)
+    line.new(bar_index, sigStop,  bar_index + levelLen, sigStop,
+         color = color.new(color.red, 20),  width = 1)
+    line.new(bar_index, sigTp,    bar_index + levelLen, sigTp,
+         color = color.new(color.teal, 20), width = 1)
+    line.new(bar_index, sigEntry, bar_index + levelLen, sigEntry,
+         color = color.new(color.gray, 40), width = 1, style = line.style_dotted)
+
+// Guard rail: this only works when the chart is on the entry timeframe.
+var label tfWarn = na
+if barstate.islast
+    label.delete(tfWarn)
+    if timeframe.in_seconds() > timeframe.in_seconds(htfTf)
+        tfWarn := label.new(bar_index, high,
+             "⚠ Chart timeframe is above the FVG timeframe (" + htfTf + ").\nSwitch the chart to the entry timeframe (1m).",
+             style = label.style_label_down, color = color.new(color.orange, 10),
+             textcolor = color.black, size = size.small)
+
+// ----------------------------------------------------------------- alerts ---
+alertcondition(sigLong,  "M+ FVG Long",  "M+ FVG long entry on {{ticker}} @ {{close}}")
+alertcondition(sigShort, "M+ FVG Short", "M+ FVG short entry on {{ticker}} @ {{close}}")
+
+if sigLong or sigShort
+    alert((sigLong ? "LONG" : "SHORT") + " " + syminfo.ticker +
+         "  entry " + str.tostring(sigEntry, format.mintick) +
+         "  SL "    + str.tostring(sigStop,  format.mintick) +
+         "  TP "    + str.tostring(sigTp,    format.mintick),
+         alert.freq_once_per_bar_close)
