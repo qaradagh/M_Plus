@@ -3,8 +3,9 @@
 //  M+ FVG Engulf  —  Strategy
 // -----------------------------------------------------------------------------
 //  Backtestable version of indicators/mplus_fvg_engulf.pine. The setup engine,
-//  trade tracker and dashboard below are the same as the indicator's, so the
-//  two always agree — keep them in sync when editing.
+//  trade tracker and dashboard are the same as the indicator's, so the two
+//  always agree on signals — keep them in sync when editing. What is extra
+//  here is order placement: each trade carries its own entry id and bracket.
 //
 //  Rules and their source quotes: docs/SPEC.md
 //  Chart must be on the ENTRY timeframe (1m); the gap timeframe is an input.
@@ -17,7 +18,7 @@ strategy("M+ FVG Engulf Strategy", shorttitle = "M+ FVG ST", overlay = true,
      initial_capital     = 10000,
      default_qty_type    = strategy.percent_of_equity,
      default_qty_value   = 10,
-     pyramiding          = 0,
+     pyramiding          = 5,
      calc_on_every_tick  = false,
      commission_type     = strategy.commission.percent,
      commission_value    = 0.0,
@@ -47,8 +48,8 @@ killOnBreak = input.bool(true, "Cancel when a close passes through the gap", gro
 allowLong  = input.bool(true, "Longs",  group = G_RULE, inline = "dir")
 allowShort = input.bool(true, "Shorts", group = G_RULE, inline = "dir")
 maxZones   = input.int(40, "Max tracked gaps", minval = 5, maxval = 200, group = G_RULE)
-oneAtATime = input.bool(true, "Skip signals while a trade is open", group = G_RULE,
-     tooltip = "در فایل صوتی پرسیده شد ولی جواب داده نشد («همزمان به دوتاش بخوره»). پیش‌فرض: فقط یک پوزیشن.")
+maxConcur  = input.int(1, "Max concurrent positions", minval = 1, maxval = 5, group = G_RULE,
+     tooltip = "در فایل صوتی پرسیده شد ولی جواب داده نشد («همزمان به دوتاش بخوره»). پیش‌فرض ۱؛ روی ۲ بگذار تا اثرش را در بک‌تست ببینی.")
 
 rr       = input.float(3.0, "Reward : Risk", minval = 0.5, step = 0.5, group = G_RISK)
 stopMode = input.string("Swing since gap entry", "Stop loss placement",
@@ -127,9 +128,12 @@ type Trade
     float target
     int   state
     int   exitBar
-    box   riskBx
-    box   rewardBx
-    label lbl
+    box    riskBx
+    box    rewardBx
+    label  lbl
+    string entryId
+    bool   partHit
+    float  partial
 
 // Label text and colour for a trade in each of its four states. Declared here
 // so the signal handler and the resolver render a trade identically.
@@ -172,9 +176,8 @@ barMs = timeframe.in_seconds() * 1000
 ema     = ta.ema(close, emaLen)
 tz      = tzName == "Tehran" ? "Asia/Tehran" : "America/New_York"
 inSess  = not useSess or not na(time(timeframe.period, sessStr, tz))
-flatOk  = not oneAtATime or strategy.position_size == 0
-longOk  = allowLong  and inSess and flatOk and (not useEma or close > ema)
-shortOk = allowShort and inSess and flatOk and (not useEma or close < ema)
+longOk  = allowLong  and inSess and (not useEma or close > ema)
+shortOk = allowShort and inSess and (not useEma or close < ema)
 
 // ------------------------------------------------------------------ state ---
 var zones  = array.new<Fvg>()
@@ -189,6 +192,14 @@ float sigStop  = na
 float sigTp    = na
 
 if barstate.isconfirmed
+
+    // Trades still running, counting any opened earlier on this same bar, so
+    // two zones firing together cannot both slip past the concurrency cap.
+    int liveNow = 0
+    if array.size(trades) > 0
+        for i = 0 to array.size(trades) - 1
+            if array.get(trades, i).state == 0
+                liveNow += 1
 
     // --- register gaps confirmed by the last closed HTF bar ------------------
     if htfClosed
@@ -261,14 +272,18 @@ if barstate.isconfirmed
                         // A close deeper into the gap moves the reference
                         // candle forward — but only once. A wick alone does
                         // not update it.
-                        deeper = z.bull ? close < z.refLo : close > z.refHi
-                        if deeper and z.updates < maxUpdates
+                        deeper  = z.bull ? close < z.refLo : close > z.refHi
+                        updated = deeper and z.updates < maxUpdates
+                        if updated
                             z.updates += 1
                             z.refBar  := bar_index
                             z.refHi   := high
                             z.refLo   := low
 
-                        if insideClose
+                        // A candle that moves the reference spends the update
+                        // budget, not the inside-close budget. The two are
+                        // counted separately.
+                        if insideClose and not updated
                             z.closesIn += 1
                             if z.closesIn > maxClosesInside
                                 dead := true
@@ -290,16 +305,20 @@ if barstate.isconfirmed
                 risk    = math.abs(entryPx - stopPx)
                 dirOk   = z.bull ? longOk : shortOk
 
+                roomOk  = liveNow < maxConcur
+
                 if risk > syminfo.mintick
                     sigEntry := entryPx
                     sigStop  := stopPx
                     sigTp    := z.bull ? entryPx + rr * risk : entryPx - rr * risk
-                    if not dirOk
+                    if not (dirOk and roomOk)
                         sigSkip := true
-                    else if z.bull
-                        sigLong := true
                     else
-                        sigShort := true
+                        liveNow += 1
+                        if z.bull
+                            sigLong := true
+                        else
+                            sigShort := true
 
                 dead := true
 
@@ -323,7 +342,19 @@ if barstate.isconfirmed
         t = Trade.new(id = tradeSeq, isLong = isL, entryBar = bar_index,
              entryTime = time, entry = sigEntry, stop = sigStop, target = sigTp,
              state = sigSkip ? 3 : 0, exitBar = bar_index,
-             riskBx = na, rewardBx = na, lbl = na)
+             riskBx = na, rewardBx = na, lbl = na,
+             entryId = na, partHit = false, partial = na)
+
+        // A unique entry id per trade is what lets several run side by side,
+        // each with its own bracket, instead of merging into one position.
+        if not sigSkip
+            t.entryId := "T" + str.tostring(tradeSeq)
+            risk      = math.abs(t.entry - t.stop)
+            t.partial := isL ? t.entry + partialAtR * risk : t.entry - partialAtR * risk
+            // Risk-based sizing: lose exactly riskPct of equity if stopped out.
+            qty = useRiskSize ? (strategy.equity * riskPct / 100) / risk : na
+            strategy.entry(t.entryId, isL ? strategy.long : strategy.short,
+                 qty = useRiskSize ? qty : na)
 
         if showBoxes and not sigSkip
             t.riskBx := box.new(bar_index, math.max(t.entry, t.stop), bar_index + 1,
@@ -370,6 +401,17 @@ if barstate.isconfirmed
                 array.remove(trades, i)
 
             else if t.state == 0
+                if not na(t.entryId)
+                    if usePartial and not t.partHit
+                        strategy.exit("P" + t.entryId, from_entry = t.entryId,
+                             limit = t.partial, qty_percent = partialPct)
+                        if t.isLong ? high >= t.partial : low <= t.partial
+                            t.partHit := true
+                    // Once the partial is banked the rest rides at break-even.
+                    stopNow = usePartial and t.partHit ? t.entry : t.stop
+                    strategy.exit("X" + t.entryId, from_entry = t.entryId,
+                         stop = stopNow, limit = t.target)
+
                 // Only a running trade has its drawings touched. Re-setting a
                 // finished trade's right edge on every later bar eventually
                 // throws at runtime: a bar_index coordinate has to stay near
@@ -398,40 +440,6 @@ if barstate.isconfirmed
                 if resolved and not na(t.lbl)
                     label.set_text(t.lbl, tradeText(t))
                     label.set_color(t.lbl, tradeColor(t))
-
-// ------------------------------------------------------------------ orders --
-var float tEntry   = na
-var float tStop    = na
-var float tTp      = na
-var float tPartial = na
-var bool  tIsLong  = false
-var bool  tPartHit = false
-
-if sigLong or sigShort
-    tEntry   := sigEntry
-    tStop    := sigStop
-    tTp      := sigTp
-    tIsLong  := sigLong
-    tPartHit := false
-    risk     = math.abs(sigEntry - sigStop)
-    tPartial := sigLong ? sigEntry + partialAtR * risk : sigEntry - partialAtR * risk
-
-    // Risk-based sizing: lose exactly riskPct of equity if the stop is hit.
-    qty = useRiskSize ? (strategy.equity * riskPct / 100) / risk : na
-    strategy.entry(sigLong ? "Long" : "Short", sigLong ? strategy.long : strategy.short,
-         qty = useRiskSize ? qty : na)
-
-if strategy.position_size != 0 and not na(tStop)
-    fromId = tIsLong ? "Long" : "Short"
-
-    if usePartial and not tPartHit
-        strategy.exit("Partial", from_entry = fromId, limit = tPartial, qty_percent = partialPct)
-        if tIsLong ? high >= tPartial : low <= tPartial
-            tPartHit := true
-
-    // Once the partial is banked the remainder rides with a break-even stop.
-    stopNow = usePartial and tPartHit ? tEntry : tStop
-    strategy.exit("Exit", from_entry = fromId, stop = stopNow, limit = tTp)
 
 // ------------------------------------------------------------------ plots ---
 plotshape(sigLong,  title = "Long",  style = shape.triangleup,

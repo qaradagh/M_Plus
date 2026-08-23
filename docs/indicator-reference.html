@@ -167,14 +167,14 @@ bearish zone:   bot = high[1]   top = low[3]</pre>
 <li><strong>عبور کامل؟</strong> اگر کلوز آن‌طرف ناحیه باشد → ناحیه باطل، پایان.</li>
 <li><strong>اینگالف؟</strong> اگر کلوز فراتر از سایه‌ی کندل مرجع باشد → سیگنال صادر می‌شود، پایان.</li>
 <li><strong>کلوز عمیق‌تر؟</strong> اگر کلوز از آن‌سوی کندل مرجع رد شده باشد و هنوز سهمیه‌ی آپدیت مانده → کندل مرجع جابه‌جا می‌شود.</li>
-<li><strong>شمارش کلوز داخلی:</strong> اگر این کندل داخل ناحیه کلوز کرده، شمارنده یکی زیاد می‌شود؛ اگر از سقف گذشت → ناحیه باطل.</li>
+<li><strong>شمارش کلوز داخلی:</strong> اگر این کندل داخل ناحیه کلوز کرده <em>و مرجع را آپدیت نکرده</em>، شمارنده یکی زیاد می‌شود؛ اگر از سقف گذشت → ناحیه باطل.</li>
 <li><strong>مهلت:</strong> اگر از کندلِ ورود بیش از <code>maxBarsToEngulf</code> کندل گذشته → ناحیه باطل.</li>
 </ol>
 
-<div class="warn">
-<strong>نکته‌ای که حتماً باید بررسی کنی:</strong> مراحل ۴ و ۵ در یک کندل هر دو اجرا می‌شوند.
-یعنی کندلی که مرجع را آپدیت می‌کند، هم‌زمان یک واحد به شمارنده‌ی کلوز داخلی هم اضافه می‌کند.
-اگر منظور دوستت این نبوده، این بند باید عوض شود.
+<div class="note">
+<strong>سهمیه‌های جدا:</strong> کندلی که مرجع را آپدیت می‌کند، از سهمیه‌ی کلوز داخل ناحیه
+خرج نمی‌کند. یعنی یک ستاپ می‌تواند یک آپدیت <em>و</em> دو کلوز داخلی داشته باشد بدون اینکه
+باطل شود. <span class="pill on">تأییدشده توسط کاربر</span>
 </div>
 
 <h3>۴٫۳ شرایط ابطال</h3>
@@ -194,6 +194,7 @@ bearish zone:   bot = high[1]   top = low[3]</pre>
 <tr><td class="id">R-16</td><td>سایه‌ای که فراتر از کندل مرجع برود ولی کلوز نکند، مرجع را <strong>عوض نمی‌کند</strong>. مطابق: «با کلوز نمیتونه بیاد با شدو میاد، اون اولین برده».</td></tr>
 <tr><td class="id">R-17</td><td>حداکثر <code>maxUpdates</code> بار آپدیت (پیش‌فرض ۱). مطابق: «فقط تا دوتا میتونه، یعنی یه دونه آپدیت بشه».</td></tr>
 <tr><td class="id">R-18</td><td>هنگام آپدیت، هم <code>refHi</code> و هم <code>refLo</code> با کندل جدید جایگزین می‌شوند.</td></tr>
+<tr><td class="id">R-46</td><td><span class="pill on">اصلاح‌شده</span> کندلی که کندل مرجع را آپدیت می‌کند، <strong>به شمارنده‌ی کلوز داخل ناحیه اضافه نمی‌شود</strong>. سهمیه‌ی آپدیت و سهمیه‌ی کلوز داخلی کاملاً جدا شمرده می‌شوند.</td></tr>
 </table>
 
 <h2>۶ · اینگالف و ورود</h2>
@@ -244,7 +245,7 @@ short entry:   close &lt; refLo    // close below the reference candle's LOW</pr
 <tr><td class="id">R-28</td><td>جهت معامله</td><td><span class="pill on">هر دو روشن</span></td><td>خرید و فروش جداگانه قابل خاموش کردن.</td></tr>
 <tr><td class="id">R-29</td><td>EMA</td><td><span class="pill off">خاموش</span></td><td>اگر روشن شود: خرید فقط بالای EMA، فروش فقط زیر آن. خط EMA مستقل از فیلتر رسم می‌شود.</td></tr>
 <tr><td class="id">R-30</td><td>سشن</td><td><span class="pill off">خاموش</span></td><td>بازه را خودت به فرمت <code>HHMM-HHMM</code> تعیین می‌کنی. پیش‌فرض <code>0000-2359</code> یعنی کل شبانه‌روز. ساعت مبنا با ورودی <code>Timezone</code> انتخاب می‌شود: <strong>تهران</strong> یا <strong>نیویورک</strong>.</td></tr>
-<tr><td class="id">R-31</td><td>تک‌پوزیشن <span class="pill">فقط استراتژی</span></td><td><span class="pill on">روشن</span></td><td>تا وقتی معامله‌ای باز است، سیگنال جدید گرفته نمی‌شود.</td></tr>
+<tr><td class="id">R-31</td><td>سقف پوزیشن هم‌زمان</td><td><span class="pill on">۱</span></td><td><span class="pill on">اصلاح‌شده</span> با ورودی <code>Max concurrent positions</code> تا ۵ قابل تنظیم است. شمارش شامل معامله‌ای که همین کندل باز شده هم می‌شود، پس دو ستاپ هم‌زمان نمی‌توانند هر دو از سقف رد شوند. در استراتژی هر معامله شناسه‌ی ورود جدا و استاپ/تارگت مستقل خودش را دارد.</td></tr>
 <tr><td class="id">R-32</td><td colspan="3">اگر ستاپ کامل شود ولی فیلتری جلویش را بگیرد، ناحیه <strong>باز هم مصرف می‌شود</strong> و به عنوان «filtered» ثبت می‌گردد — نه اینکه نادیده گرفته شود.</td></tr>
 </table>
 
@@ -340,7 +341,7 @@ short entry:   close &lt; refLo    // close below the reference candle's LOW</pr
 <tr><td class="id">I-21</td><td class="mono">Lookback (days)</td><td class="mono">5</td><td>پنجره‌ی آماری</td></tr>
 <tr><td class="id">I-22</td><td class="mono">Trades listed</td><td class="mono">12</td><td>تعداد سطر جدول</td></tr>
 <tr><td class="id">I-23</td><td class="mono">Positions / Text size</td><td class="mono">—</td><td>محل و اندازه‌ی جدول‌ها</td></tr>
-<tr><td class="id">I-24</td><td class="mono">Skip while trade open</td><td class="mono">on</td><td>تک‌پوزیشن <span class="pill">فقط استراتژی</span></td></tr>
+<tr><td class="id">I-24</td><td class="mono">Max concurrent positions</td><td class="mono">1</td><td>سقف معامله‌ی هم‌زمان، تا ۵</td></tr>
 <tr><td class="id">I-25</td><td class="mono">Size by risk %</td><td class="mono">on</td><td>حجم بر مبنای ریسک <span class="pill">فقط استراتژی</span></td></tr>
 <tr><td class="id">I-26</td><td class="mono">Risk per trade %</td><td class="mono">1.0</td><td>درصد ریسک هر معامله <span class="pill">فقط استراتژی</span></td></tr>
 <tr><td class="id">I-27</td><td class="mono">Partial exit</td><td class="mono">off</td><td>خروج پله‌ای <span class="pill">فقط استراتژی</span></td></tr>
@@ -356,11 +357,11 @@ short entry:   close &lt; refLo    // close below the reference candle's LOW</pr
 <tr><td class="id">Q-01</td><td>جای استاپ</td><td>سقف/کف حرکت از ورود به ناحیه</td><td>در متن فقط «استاپ اینجا» با اشاره به چارت. نمونه‌ی XAUUSD با این فرض ۱:۳ داد.</td></tr>
 <tr><td class="id">Q-02</td><td>مبدأ شمارش مهلت</td><td><span class="pill on">حل شد</span> از کندل مرجع، با ریست در آپدیت</td><td>← اکنون در R-14</td></tr>
 <tr><td class="id">Q-03</td><td>معنی «رد کردن» ناحیه</td><td><span class="pill on">حل شد</span> کلوز آن‌طرف ناحیه</td><td>← تأیید شد، در R-12</td></tr>
-<tr><td class="id">Q-04</td><td>خروج پله‌ای روی ۲R</td><td>خاموش</td><td>خودش گفت «نمیدونم ریسک فری کنیم یا ۵۰ درصد خروج».</td></tr>
+<tr><td class="id">Q-04</td><td>خروج پله‌ای روی ۲R</td><td><span class="pill on">حل شد</span> خاموش، با آپشن فعال‌سازی</td><td>← I-27 و I-28</td></tr>
 <tr><td class="id">Q-05</td><td>فیلتر سشن</td><td><span class="pill on">حل شد</span> بازه‌ی دلخواه کاربر + انتخاب تایم‌زون</td><td>← اکنون در R-30</td></tr>
-<tr><td class="id">Q-06</td><td>معامله‌ی هم‌زمان</td><td>فقط یک پوزیشن</td><td>«همزمان به دوتاش بخوره» پرسیده شد ولی جواب داده نشد.</td></tr>
-<tr><td class="id">Q-07</td><td>آپدیت + شمارش کلوز</td><td>هر دو در یک کندل اعمال می‌شوند</td><td>در متن به این هم‌پوشانی اشاره نشده. ← بند ۴٫۲</td></tr>
-<tr><td class="id">Q-08</td><td>دوره‌ی EMA</td><td>۲۰۰</td><td>عدد واقعی از فایل صوتی یا اسکرین‌شات‌ها مشخص نشد.</td></tr>
+<tr><td class="id">Q-06</td><td>معامله‌ی هم‌زمان</td><td><span class="pill on">حل شد</span> پیش‌فرض ۱، تا ۵ قابل تنظیم</td><td>← اکنون در R-31</td></tr>
+<tr><td class="id">Q-07</td><td>آپدیت + شمارش کلوز</td><td><span class="pill on">حل شد</span> جدا شمرده می‌شوند</td><td>← اکنون در R-46</td></tr>
+<tr><td class="id">Q-08</td><td>دوره‌ی EMA</td><td><span class="pill on">حل شد</span> خاموش، دوره قابل تغییر</td><td>← I-12 و I-13</td></tr>
 </table>
 
 <h2>۱۴ · آنچه عمداً پیاده نشده</h2>
