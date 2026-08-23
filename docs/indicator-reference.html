@@ -151,7 +151,7 @@ bearish zone:   bot = high[1]   top = low[3]</pre>
 
 <table>
 <tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
-<tr><td class="id">R-08</td><td>ورود برای ناحیه‌ی صعودی: <code>low &lt; top</code> — برای نزولی: <code>high &gt; bot</code>. مقایسه اکیداً بزرگ‌تر/کوچک‌تر است، پس <strong>لمس دقیق لبه ورود حساب نمی‌شود</strong>. مطابق: «باید بیاد توش».</td></tr>
+<tr><td class="id">R-08</td><td>ورود برای ناحیه‌ی صعودی: <code>low &lt;= top</code> — برای نزولی: <code>high &gt;= bot</code>. <strong>برخورد سایه با لبه‌ی ناحیه کافی است</strong>؛ لازم نیست قیمت داخل ناحیه نفوذ کند و قطعاً لازم نیست داخلش کلوز کند. <span class="pill on">اصلاح‌شده توسط کاربر</span></td></tr>
 <tr><td class="id">R-09</td><td>در همان کندلِ ورود، کندل مرجع تنظیم می‌شود: <code>refHi = high</code> و <code>refLo = low</code>.</td></tr>
 <tr><td class="id">R-10</td><td>اگر همان کندلِ ورود داخل ناحیه کلوز کرده باشد، شمارنده‌ی کلوز از ۱ شروع می‌شود، وگرنه از ۰.</td></tr>
 <tr><td class="id">R-11</td><td>هر ناحیه فقط <strong>یک بار</strong> فرصت دارد. بعد از سیگنال یا ابطال، از لیست حذف می‌شود و دیگر بررسی نمی‌گردد. این همان «دست نخورده باشه» است.</td></tr>

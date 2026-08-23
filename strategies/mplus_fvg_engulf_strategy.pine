@@ -225,9 +225,10 @@ if barstate.isconfirmed
             insideClose  = close <= z.top and close >= z.bot
 
             if z.state == 0
-                // Waiting for price to come back. A touch of the near edge is
-                // not enough — price has to trade inside the gap.
-                entered = z.bull ? low < z.top : high > z.bot
+                // Waiting for price to come back. A wick reaching the near edge
+                // is contact enough to arm the zone — it does not have to trade
+                // through it, and it certainly does not have to close inside.
+                entered = z.bull ? low <= z.top : high >= z.bot
                 if entered
                     z.state      := 1
                     z.enteredBar := bar_index
