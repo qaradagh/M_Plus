@@ -40,7 +40,7 @@ htfTf = input.timeframe("15", "FVG timeframe", group = G_TF,
 maxClosesInside = input.int(2, "Max closes inside the gap", minval = 1, maxval = 5, group = G_RULE,
      tooltip = "حداکثر تعداد کندلی که مجاز است داخل FVG کلوز کند. سه کلوز = ستاپ باطل.")
 maxBarsToEngulf = input.int(4, "Max bars to engulf", minval = 1, maxval = 30, group = G_RULE,
-     tooltip = "اگر تا این تعداد کندل بعد از ورود قیمت به FVG اینگالف رخ ندهد، ستاپ باطل می‌شود («سه چهار تا کندل شد دیگه کنسل»).")
+     tooltip = "اگر تا این تعداد کندل بعد از کندل مرجع اینگالف رخ ندهد، ستاپ باطل می‌شود. با هر آپدیت کندل مرجع، شمارش از نو شروع می‌شود.")
 maxUpdates = input.int(1, "Max reference-candle updates", minval = 0, maxval = 3, group = G_RULE,
      tooltip = "کندل مرجع حداکثر چند بار می‌تواند آپدیت شود. طبق فایل صوتی فقط یک بار.")
 killOnBreak = input.bool(true, "Cancel when a close passes through the gap", group = G_RULE)
@@ -67,8 +67,11 @@ showEma = input.bool(true, "Plot EMA", group = G_FILT, inline = "ema",
 emaLen  = input.int(200, "", minval = 1, group = G_FILT, inline = "ema")
 useEma  = input.bool(false, "Use EMA as a trend filter", group = G_FILT,
      tooltip = "در فایل صوتی مطرح شد ولی فعلاً کنار گذاشته شد: «میتونی خاموشش کنی بعدا».")
+tzName  = input.string("Tehran", "Timezone", options = ["Tehran", "New York"], group = G_FILT,
+     tooltip = "هم بازه‌ی سشن با این ساعت سنجیده می‌شود و هم ساعت‌های جدول معاملات با آن نمایش داده می‌شود.")
 useSess = input.bool(false, "Session filter", group = G_FILT, inline = "sess")
-sessStr = input.session("0000-2359", "", group = G_FILT, inline = "sess")
+sessStr = input.session("0000-2359", "", group = G_FILT, inline = "sess",
+     tooltip = "بازه را خودت تعیین کن، به فرمت HHMM-HHMM در تایم‌زون بالا. مثال: 0930-1600")
 
 showZones  = input.bool(true, "Draw gap boxes", group = G_VIS)
 showDead   = input.bool(true, "Keep cancelled gaps on chart", group = G_VIS,
@@ -103,6 +106,7 @@ type Fvg
     bool  bull
     int   state
     int   enteredBar
+    int   refBar
     int   closesIn
     int   updates
     float refHi
@@ -166,7 +170,8 @@ barMs = timeframe.in_seconds() * 1000
 
 // ---------------------------------------------------------------- filters ---
 ema     = ta.ema(close, emaLen)
-inSess  = not useSess or not na(time(timeframe.period, sessStr))
+tz      = tzName == "Tehran" ? "Asia/Tehran" : "America/New_York"
+inSess  = not useSess or not na(time(timeframe.period, sessStr, tz))
 flatOk  = not oneAtATime or strategy.position_size == 0
 longOk  = allowLong  and inSess and flatOk and (not useEma or close > ema)
 shortOk = allowShort and inSess and flatOk and (not useEma or close < ema)
@@ -189,7 +194,7 @@ if barstate.isconfirmed
     if htfClosed
         if bullNew and bullTop > bullBot
             z = Fvg.new(top = bullTop, bot = bullBot, bull = true, state = 0,
-                 enteredBar = 0, closesIn = 0, updates = 0,
+                 enteredBar = 0, refBar = 0, closesIn = 0, updates = 0,
                  refHi = na, refLo = na, swHi = na, swLo = na, bx = na)
             if showZones
                 z.bx := box.new(gapStart, z.top, time + barMs, z.bot,
@@ -199,7 +204,7 @@ if barstate.isconfirmed
 
         if bearNew and bearTop > bearBot
             z = Fvg.new(top = bearTop, bot = bearBot, bull = false, state = 0,
-                 enteredBar = 0, closesIn = 0, updates = 0,
+                 enteredBar = 0, refBar = 0, closesIn = 0, updates = 0,
                  refHi = na, refLo = na, swHi = na, swLo = na, bx = na)
             if showZones
                 z.bx := box.new(gapStart, z.top, time + barMs, z.bot,
@@ -232,6 +237,7 @@ if barstate.isconfirmed
                 if entered
                     z.state      := 1
                     z.enteredBar := bar_index
+                    z.refBar     := bar_index
                     z.refHi      := high
                     z.refLo      := low
                     z.swHi       := high
@@ -258,6 +264,7 @@ if barstate.isconfirmed
                         deeper = z.bull ? close < z.refLo : close > z.refHi
                         if deeper and z.updates < maxUpdates
                             z.updates += 1
+                            z.refBar  := bar_index
                             z.refHi   := high
                             z.refLo   := low
 
@@ -266,7 +273,9 @@ if barstate.isconfirmed
                             if z.closesIn > maxClosesInside
                                 dead := true
 
-                        if bar_index - z.enteredBar >= maxBarsToEngulf
+                        // Measured from the reference candle, so an update
+                        // restarts the clock rather than eating into it.
+                        if bar_index - z.refBar >= maxBarsToEngulf
                             dead := true
 
             // --- act on the outcome ---------------------------------------
@@ -564,7 +573,7 @@ if showDash and barstate.islast
                 3 => "filtered"
                 => "open"
             listCell(listT, 0, r, str.tostring(t.id), bg, txtSize)
-            listCell(listT, 1, r, str.format_time(t.entryTime, "MM-dd HH:mm", syminfo.timezone), bg, txtSize)
+            listCell(listT, 1, r, str.format_time(t.entryTime, "MM-dd HH:mm", tz), bg, txtSize)
             listCell(listT, 2, r, t.isLong ? "LONG" : "SHORT", bg, txtSize)
             listCell(listT, 3, r, str.tostring(t.entry,  format.mintick), bg, txtSize)
             listCell(listT, 4, r, str.tostring(t.stop,   format.mintick), bg, txtSize)

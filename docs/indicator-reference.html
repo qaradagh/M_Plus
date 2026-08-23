@@ -103,9 +103,10 @@
 
 <p>
 یک FVG دست‌نخورده روی تایم ۱۵ دقیقه پیدا می‌شود. سپس روی تایم ۱ دقیقه منتظر می‌مانیم
-قیمت داخل آن برگردد. اولین کندلی که وارد ناحیه می‌شود «کندل مرجع» نام می‌گیرد. اگر
-حداکثر یک تا دو کندل داخل ناحیه کلوز کنند و بعد سریع یک کندل فراتر از سایه‌ی کندل مرجع
-کلوز کند (اینگالف)، همان‌جا با نسبت ۱:۳ وارد می‌شویم.
+قیمت به آن برگردد — <strong>برخورد سایه کافی است</strong>. اولین کندلی که به ناحیه
+می‌خورد «کندل مرجع» نام می‌گیرد. اگر حداکثر یک تا دو کندل داخل ناحیه کلوز کنند و بعد
+سریع یک کندل فراتر از <strong>کل رنج</strong> کندل مرجع کلوز کند (اینگالف)، همان‌جا با
+نسبت ۱:۳ وارد می‌شویم.
 </p>
 
 <p>ستاپ در سه حالت باطل می‌شود: قیمت کامل از ناحیه رد شود، سه کلوز داخلش بخورد، یا بیش از
@@ -180,9 +181,9 @@ bearish zone:   bot = high[1]   top = low[3]</pre>
 
 <table>
 <tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
-<tr><td class="id">R-12</td><td>عبور کامل: برای ناحیه‌ی صعودی <code>close &lt; bot</code> و برای نزولی <code>close &gt; top</code>. معیار <strong>کلوز</strong> است نه سایه — یعنی سایه‌ای که از ناحیه رد شود ولی برگردد، ناحیه را نمی‌کُشد. با ورودی <code>killOnBreak</code> قابل خاموش کردن است.</td></tr>
+<tr><td class="id">R-12</td><td><span class="pill on">تأییدشده</span> عبور کامل: برای ناحیه‌ی صعودی <code>close &lt; bot</code> و برای نزولی <code>close &gt; top</code>. معیار <strong>کلوز</strong> است نه سایه — یعنی سایه‌ای که از ناحیه رد شود ولی برگردد، ناحیه را نمی‌کُشد. با ورودی <code>killOnBreak</code> قابل خاموش کردن است.</td></tr>
 <tr><td class="id">R-13</td><td>سقف کلوز داخلی <code>maxClosesInside</code> (پیش‌فرض ۲). سومین کلوز باعث ابطال می‌شود. مطابق: «سه تا کلوز شد دیگه کنسله».</td></tr>
-<tr><td class="id">R-14</td><td>مهلت اینگالف از <strong>کندلِ ورود</strong> شمرده می‌شود، نه از کندل مرجعِ آپدیت‌شده. شرط ابطال: <code>bar_index − enteredBar ≥ maxBarsToEngulf</code>.</td></tr>
+<tr><td class="id">R-14</td><td><span class="pill on">اصلاح‌شده</span> مهلت اینگالف از <strong>کندل مرجع</strong> شمرده می‌شود و با هر آپدیتِ کندل مرجع <strong>از نو شروع</strong> می‌گردد. شرط ابطال: <code>bar_index − refBar ≥ maxBarsToEngulf</code>. چون حداکثر یک آپدیت مجاز است (R-17)، بدترین حالت دو برابر این مهلت می‌شود.</td></tr>
 </table>
 
 <h2>۵ · کندل مرجع و قانون آپدیت</h2>
@@ -204,7 +205,7 @@ short entry:   close &lt; refLo    // close below the reference candle's LOW</pr
 
 <table>
 <tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
-<tr><td class="id">R-19</td><td>معیار اینگالف <strong>کلوز</strong> در برابر <strong>سایه</strong>ی کندل مرجع است — نه بدنه در برابر بدنه. مطابق: «بالای این باید با شدو، بادی بسته بشه».</td></tr>
+<tr><td class="id">R-19</td><td><span class="pill on">تأییدشده</span> معیار اینگالف <strong>کلوز</strong> در برابر <strong>کل رنج</strong> کندل مرجع (شامل سایه) است — نه بدنه در برابر بدنه. مطابق: «بالای این باید با شدو، بادی بسته بشه».</td></tr>
 <tr><td class="id">R-20</td><td>هم‌رنگ بودن کندل‌ها بررسی نمی‌شود. مطابق: «هم رنگ و غیر همرنگ اینا مهم نیست».</td></tr>
 <tr><td class="id">R-21</td><td>تعداد کندل‌های اینگالف‌کننده محدود نیست؛ فقط مهلت کلی R-14 اعمال می‌شود.</td></tr>
 <tr><td class="id">R-22</td><td>قیمت ورود = <strong>کلوز کندل اینگالف‌کننده</strong>. در اندیکاتور همین عدد مبناست؛ در استراتژی سفارش در <strong>اوپن کندل بعدی</strong> پر می‌شود (رفتار واقع‌گرایانه‌ی TradingView).</td></tr>
@@ -242,7 +243,7 @@ short entry:   close &lt; refLo    // close below the reference candle's LOW</pr
 <tr><th style="width:15mm">شناسه</th><th>فیلتر</th><th style="width:20mm">پیش‌فرض</th><th>توضیح</th></tr>
 <tr><td class="id">R-28</td><td>جهت معامله</td><td><span class="pill on">هر دو روشن</span></td><td>خرید و فروش جداگانه قابل خاموش کردن.</td></tr>
 <tr><td class="id">R-29</td><td>EMA</td><td><span class="pill off">خاموش</span></td><td>اگر روشن شود: خرید فقط بالای EMA، فروش فقط زیر آن. خط EMA مستقل از فیلتر رسم می‌شود.</td></tr>
-<tr><td class="id">R-30</td><td>سشن</td><td><span class="pill off">خاموش</span></td><td>بازه‌ی پیش‌فرض <code>0000-2359</code> یعنی کل شبانه‌روز.</td></tr>
+<tr><td class="id">R-30</td><td>سشن</td><td><span class="pill off">خاموش</span></td><td>بازه را خودت به فرمت <code>HHMM-HHMM</code> تعیین می‌کنی. پیش‌فرض <code>0000-2359</code> یعنی کل شبانه‌روز. ساعت مبنا با ورودی <code>Timezone</code> انتخاب می‌شود: <strong>تهران</strong> یا <strong>نیویورک</strong>.</td></tr>
 <tr><td class="id">R-31</td><td>تک‌پوزیشن <span class="pill">فقط استراتژی</span></td><td><span class="pill on">روشن</span></td><td>تا وقتی معامله‌ای باز است، سیگنال جدید گرفته نمی‌شود.</td></tr>
 <tr><td class="id">R-32</td><td colspan="3">اگر ستاپ کامل شود ولی فیلتری جلویش را بگیرد، ناحیه <strong>باز هم مصرف می‌شود</strong> و به عنوان «filtered» ثبت می‌گردد — نه اینکه نادیده گرفته شود.</td></tr>
 </table>
@@ -308,7 +309,7 @@ short entry:   close &lt; refLo    // close below the reference candle's LOW</pr
 <table>
 <tr><th style="width:15mm">شناسه</th><th>قانون</th></tr>
 <tr><td class="id">R-43</td><td>پنجره‌ی آماری <code>lookbackDay</code> روز است (پیش‌فرض ۵ — مطابق بک‌تست دستی فایل صوتی). تمام آمار فقط داخل همین پنجره است، نه از ابتدای چارت.</td></tr>
-<tr><td class="id">R-44</td><td>زمان‌ها با تایم‌زون نماد نمایش داده می‌شوند، نه تایم‌زون محلی.</td></tr>
+<tr><td class="id">R-44</td><td>ساعت‌های جدول معاملات با همان تایم‌زونی نمایش داده می‌شوند که در ورودی <code>Timezone</code> انتخاب شده (تهران یا نیویورک) — مستقل از اینکه فیلتر سشن روشن باشد یا نه.</td></tr>
 </table>
 
 <h2>۱۲ · فهرست کامل ورودی‌ها</h2>
@@ -328,7 +329,8 @@ short entry:   close &lt; refLo    // close below the reference candle's LOW</pr
 <tr><td class="id">I-11</td><td class="mono">Plot EMA</td><td class="mono">on</td><td>رسم خط EMA</td></tr>
 <tr><td class="id">I-12</td><td class="mono">EMA length</td><td class="mono">200</td><td>دوره‌ی EMA</td></tr>
 <tr><td class="id">I-13</td><td class="mono">Use EMA as filter</td><td class="mono">off</td><td>فیلتر روند</td></tr>
-<tr><td class="id">I-14</td><td class="mono">Session filter</td><td class="mono">off</td><td>محدودیت ساعت</td></tr>
+<tr><td class="id">I-14</td><td class="mono">Session filter</td><td class="mono">off</td><td>محدودیت ساعت، بازه‌ی دلخواه <code>HHMM-HHMM</code></td></tr>
+<tr><td class="id">I-29</td><td class="mono">Timezone</td><td class="mono">Tehran</td><td>مبنای ساعت سشن و جدول معاملات — تهران یا نیویورک</td></tr>
 <tr><td class="id">I-15</td><td class="mono">Draw gap boxes</td><td class="mono">on</td><td>رسم ناحیه‌ها</td></tr>
 <tr><td class="id">I-16</td><td class="mono">Keep cancelled gaps</td><td class="mono">on</td><td>خاکستری کردن به جای پاک کردن</td></tr>
 <tr><td class="id">I-17</td><td class="mono">Draw trade boxes</td><td class="mono">on</td><td>باکس ریسک و ریوارد</td></tr>
@@ -352,10 +354,10 @@ short entry:   close &lt; refLo    // close below the reference candle's LOW</pr
 <table>
 <tr><th style="width:14mm">شناسه</th><th>موضوع</th><th>فرض فعلی</th><th>چرا مبهم است</th></tr>
 <tr><td class="id">Q-01</td><td>جای استاپ</td><td>سقف/کف حرکت از ورود به ناحیه</td><td>در متن فقط «استاپ اینجا» با اشاره به چارت. نمونه‌ی XAUUSD با این فرض ۱:۳ داد.</td></tr>
-<tr><td class="id">Q-02</td><td>مبدأ شمارش مهلت</td><td>از کندل ورود به ناحیه</td><td>«سه چهار تا کندل» گفته شده ولی مبدأ مشخص نیست. گزینه‌ی دیگر: از کندل مرجعِ آپدیت‌شده.</td></tr>
-<tr><td class="id">Q-03</td><td>معنی «رد کردن» ناحیه</td><td>کلوز آن‌طرف ناحیه</td><td>ممکن است منظور سایه بوده باشد، که ستاپ‌های بیشتری را می‌کُشد.</td></tr>
+<tr><td class="id">Q-02</td><td>مبدأ شمارش مهلت</td><td><span class="pill on">حل شد</span> از کندل مرجع، با ریست در آپدیت</td><td>← اکنون در R-14</td></tr>
+<tr><td class="id">Q-03</td><td>معنی «رد کردن» ناحیه</td><td><span class="pill on">حل شد</span> کلوز آن‌طرف ناحیه</td><td>← تأیید شد، در R-12</td></tr>
 <tr><td class="id">Q-04</td><td>خروج پله‌ای روی ۲R</td><td>خاموش</td><td>خودش گفت «نمیدونم ریسک فری کنیم یا ۵۰ درصد خروج».</td></tr>
-<tr><td class="id">Q-05</td><td>فیلتر سشن</td><td>خاموش</td><td>فقط اشاره‌ی گذرا به توکیو. در اسکرین‌شات‌ها سایه‌ی سشن دیده می‌شود.</td></tr>
+<tr><td class="id">Q-05</td><td>فیلتر سشن</td><td><span class="pill on">حل شد</span> بازه‌ی دلخواه کاربر + انتخاب تایم‌زون</td><td>← اکنون در R-30</td></tr>
 <tr><td class="id">Q-06</td><td>معامله‌ی هم‌زمان</td><td>فقط یک پوزیشن</td><td>«همزمان به دوتاش بخوره» پرسیده شد ولی جواب داده نشد.</td></tr>
 <tr><td class="id">Q-07</td><td>آپدیت + شمارش کلوز</td><td>هر دو در یک کندل اعمال می‌شوند</td><td>در متن به این هم‌پوشانی اشاره نشده. ← بند ۴٫۲</td></tr>
 <tr><td class="id">Q-08</td><td>دوره‌ی EMA</td><td>۲۰۰</td><td>عدد واقعی از فایل صوتی یا اسکرین‌شات‌ها مشخص نشد.</td></tr>
